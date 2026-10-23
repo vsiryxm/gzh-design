@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>公众号文章排版器 · Markdown → 微信 HTML</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e6e8ec; --dim:#8b93a1; --dim2:#5c6472;
+    --main:#059669; --main2:#34d399; --danger:#f87171; --warn:#fbbf24;
+  }
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{
+    flex:0 0 auto; display:flex; align-items:center; gap:16px;
+    padding:12px 18px; background:var(--panel); border-bottom:1px solid var(--line);
+  }
+  header h1{font-size:14px;font-weight:700;letter-spacing:.5px;white-space:nowrap}
+  header h1 span{color:var(--dim2);font-weight:400;margin-left:8px;font-size:12px}
+  .themes{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+  .themes button{
+    background:var(--panel2); border:1px solid var(--line); color:var(--dim);
+    padding:6px 11px; border-radius:7px; font-size:12px; cursor:pointer;
+    transition:.15s; white-space:nowrap; font-family:inherit;
+  }
+  .themes button:hover{border-color:#3d4453;color:var(--text)}
+  .themes button.on{background:var(--main);border-color:var(--main);color:#fff;font-weight:600}
+  .themes button i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+  /* 风格菜单的装饰：调色盘 + 「风格」二字，提示这一排是换皮肤 */
+  .themes-lead{
+    display:inline-flex; align-items:center; gap:6px; flex:0 0 auto;
+    color:var(--dim2); font-size:11px; font-weight:600; letter-spacing:1px;
+    white-space:nowrap; padding-right:2px;
+  }
+  .themes-lead svg{width:15px; height:15px; display:block; color:var(--main2)}
+
+  /* ---------- 主区：可拖动两栏 ---------- */
+  main{
+    flex:1; min-height:0; display:grid;
+    grid-template-columns: var(--lw, 1fr) 5px minmax(0, 1fr);
+  }
+  .pane{display:flex; flex-direction:column; min-width:0; min-height:0}
+
+  /* 单栏模式：必须只剩一条轨道。
+     写成 `0 0 1fr` 时左栏隐藏、右栏变成唯一网格项，会被自动放进第 1 条 0 宽轨道，
+     结果是右栏被压在最左边窄窄一条 —— 所以这里一律收成单轨。 */
+  main.only-left{grid-template-columns:minmax(0,1fr)}
+  main.only-right{grid-template-columns:minmax(0,1fr)}
+  main.only-left .pane.right,
+  main.only-right .pane.left{display:none}
+  main.only-left .splitter,
+  main.only-right .splitter{display:none}
+
+  /* 分隔条：拖动改宽度，双击回到等分 */
+  .splitter{
+    position:relative; z-index:3; background:var(--line);
+    cursor:col-resize; touch-action:none; transition:background .15s;
+  }
+  .splitter::after{content:''; position:absolute; inset:0 -4px}
+  .splitter::before{
+    content:''; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:1px; height:30px; background:#4a5364;
+  }
+  .splitter:hover,.splitter.on{background:var(--main)}
+  body.dragging{cursor:col-resize}
+  body.dragging .device, body.dragging .pccard, body.dragging textarea{pointer-events:none}
+
+  .pane-head{
+    flex:0 0 auto; display:flex; align-items:center; gap:8px;
+    padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);
+    font-size:11px; color:var(--dim2); letter-spacing:1px; text-transform:uppercase;
+  }
+  .pane-head .grow{flex:1}
+  .pane-head button{
+    background:none; border:1px solid var(--line); color:var(--dim);
+    padding:4px 9px; border-radius:6px; font-size:11px; cursor:pointer; font-family:inherit;
+    display:inline-flex; align-items:center; gap:5px; line-height:1.4; white-space:nowrap;
+  }
+  .pane-head button:hover{color:var(--text); border-color:#3d4453}
+  .pane-head button svg{width:13px; height:13px; display:block; flex:0 0 auto}
+  #syncBtn svg{opacity:.4}
+  #syncBtn.on{color:var(--main2); border-color:var(--main)}
+  #syncBtn.on svg{opacity:1}
+
+  /* 分段按钮组 */
+  .seg{display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; flex:0 0 auto}
+  .seg button{border:0; border-radius:0; padding:4px 9px; background:none; color:var(--dim)}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button:hover{background:#232833; color:var(--text)}
+  .seg button.on{background:#333a48; color:#fff; font-weight:600}
+  .pane-head .seg button{border:0; padding:4px 8px}
+  .seg button svg{width:14px; height:14px; display:block}
+
+  textarea{
+    flex:1; width:100%; resize:none; border:0; outline:0;
+    background:var(--bg); color:#c9d1d9; padding:16px 18px;
+    font:13px/1.8 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    tab-size:2;
+  }
+  textarea::placeholder{color:var(--dim2)}
+
+  /* ---------- 右栏：手机 / PC 两种预览 ---------- */
+  .stage{
+    position:relative; flex:1; min-height:0;
+    display:flex; align-items:center; justify-content:center;
+    /* 上下不留白：手机要吃掉整块高度的 99%（fit() 里按 0.99 算机身逻辑高度），
+       左右留 22px 给机身中框的高光。 */
+    padding:0 22px; overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 0%, #222936 0%, var(--bg) 70%);
+  }
+  main.mode-pc .stage{background:#e6e8ec; padding:18px 22px}
+
+  .device{
+    position:relative; flex:0 0 auto;
+    /* 高度跟着右栏走：JS 每次 fit 把 --devh 设成可用高度的 99%（扣掉机身边框），
+       宽度仍锁 375，保证正文按真实手机宽度渲染，不会因为拉伸而改变字号观感。 */
+    width:375px; height:var(--devh, 720px);
+    display:flex; flex-direction:column;
+    border-radius:46px; background:#fff;
+    zoom:var(--zoom,1);
+    /* 内层机身边 + 外层高光边，一起模拟金属中框 */
+    box-shadow:0 0 0 10px #2b323d, 0 0 0 11.5px #59616f, 0 26px 62px rgba(0,0,0,.55);
+  }
+  main.mode-pc .device{display:none}
+
+  /* 侧键：电源 + 音量 */
+  .key{position:absolute; width:4px; background:#3a4150; border-radius:2px}
+  .key.power{right:-13.5px; top:26%; height:76px}
+  .key.v1{left:-13.5px; top:21%; height:30px}
+  .key.v2{left:-13.5px; top:30%; height:54px}
+
+  /* 灵动岛：常驻悬浮，内容在它下面滚动 */
+  .island{
+    position:absolute; top:9px; left:50%; transform:translateX(-50%);
+    width:114px; height:30px; border-radius:16px; background:#000;
+    z-index:5; display:flex; align-items:center; justify-content:flex-end;
+    padding:0 9px; pointer-events:none;
+  }
+  .island .cam{
+    width:9px; height:9px; border-radius:50%; background:#101722;
+    box-shadow:inset 0 0 0 1px #2b3a52;
+  }
+  .screen{
+    flex:1; min-height:0;
+    overflow-y:auto; overflow-x:hidden;
+    border-radius:46px;
+    background:#fff;
+    padding:48px 0 36px;              /* 上让灵动岛，下让指示条 */
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin; scrollbar-color:#c6c9cf transparent;
+  }
+  .screen::-webkit-scrollbar{width:5px}
+  .screen::-webkit-scrollbar-thumb{background:#c6c9cf;border-radius:3px}
+  .screen::-webkit-scrollbar-track{background:transparent}
+  .home-bar{
+    position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+    width:120px; height:5px; border-radius:3px; background:#111;
+    opacity:.25; z-index:5; pointer-events:none;
+  }
+
+  /* PC 预览：无外壳，677px 排版宽度 */
+  .pcwrap{
+    display:none; align-self:stretch; justify-content:center;
+    width:100%; height:100%; overflow:hidden;
+  }
+  main.mode-pc .pcwrap{display:flex}
+  .pccard{
+    width:677px; height:calc(100% / var(--pczoom,1));
+    zoom:var(--pczoom,1);
+    padding:26px 0 40px;
+    background:#fff; overflow-y:auto;
+    box-shadow:0 8px 34px rgba(0,0,0,.18);
+    scrollbar-width:thin; scrollbar-color:#c6c9cf transparent;
+  }
+  .pccard::-webkit-scrollbar{width:9px}
+  .pccard::-webkit-scrollbar-thumb{background:#c6c9cf;border-radius:5px}
+  .pccard::-webkit-scrollbar-track{background:#f4f5f7}
+
+  #out{background:#fff}
+
+  footer{
+    flex:0 0 auto; display:flex; align-items:center; gap:14px;
+    padding:9px 18px; background:var(--panel); border-top:1px solid var(--line);
+    font-size:11px; color:var(--dim2);
+  }
+  footer .stat{white-space:nowrap}
+  footer .stat b{color:var(--dim);font-weight:600}
+  footer .grow{flex:1}
+  .btn-copy{
+    background:var(--main); color:#fff; border:0; padding:9px 22px;
+    border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;
+    font-family:inherit; transition:.15s; white-space:nowrap;
+  }
+  .btn-copy:hover{background:#047857}
+  .btn-copy:active{transform:scale(.98)}
+  .btn-copy.done{background:#065f46}
+  .warn{color:var(--warn)}
+  .bad{color:var(--danger)}
+
+  /* 下载：弱化按钮，和主按钮「复制到公众号」拉开层次 */
+  .btn-dl{
+    background:none; border:1px solid var(--line); color:var(--dim);
+    padding:8px 14px; border-radius:8px; font-size:12px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:.15s; white-space:nowrap;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-dl svg{width:13px;height:13px}
+  .btn-dl:hover{color:var(--text); border-color:#4a5364; background:var(--panel2)}
+
+  /* 帮助：右上角圆形问号 */
+  .help{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:none; border:1px solid var(--line); color:var(--dim);
+    font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
+    transition:.15s; padding:0; line-height:1;
+  }
+  .help:hover{color:var(--text); border-color:var(--main); background:var(--panel2)}
+
+  /* 回到顶部：浮动在右栏右下角，滚动到一定距离才淡入 */
+  .fab{
+    position:absolute; z-index:6; right:22px; bottom:22px;
+    width:42px; height:42px; border-radius:50%;
+    background:rgba(23,26,33,.84); border:1px solid rgba(255,255,255,.14);
+    color:var(--text); cursor:pointer; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 22px rgba(0,0,0,.4);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    opacity:0; transform:translateY(10px) scale(.94); pointer-events:none;
+    transition:opacity .22s ease, transform .22s ease, background .15s;
+  }
+  .fab.show{opacity:1; transform:none; pointer-events:auto}
+  .fab svg{width:17px; height:17px}
+  .fab:hover{background:rgba(38,44,56,.96)}
+  /* PC 预览是浅底，浮动按钮跟着换成浅色系 */
+  main.mode-pc .fab{
+    background:rgba(255,255,255,.94); border-color:rgba(15,17,21,.1); color:#374151;
+    box-shadow:0 8px 22px rgba(0,0,0,.16);
+  }
+  main.mode-pc .fab:hover{background:#fff}
+
+  /* ---------- 自绘弹窗（替代 alert / confirm） ---------- */
+  .modal{
+    position:fixed; inset:0; z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+    opacity:0; visibility:hidden; transition:opacity .18s ease, visibility .18s;
+  }
+  .modal.show{opacity:1; visibility:visible}
+  .modal-mask{
+    position:absolute; inset:0; background:rgba(6,8,12,.66);
+    -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+  }
+  .modal-card{
+    position:relative; width:100%; max-width:352px;
+    max-height:calc(100vh - 48px);
+    display:flex; flex-direction:column;
+    background:var(--panel); border:1px solid #323847; border-radius:14px;
+    box-shadow:0 24px 60px rgba(0,0,0,.6);
+    transform:translateY(10px) scale(.98); transition:transform .18s ease;
+    overflow:hidden;
+  }
+  .modal.show .modal-card{transform:none}
+  .modal-head{
+    display:flex; align-items:center; gap:10px;
+    padding:15px 16px 0;
+  }
+  .modal-head b{flex:1; font-size:14px; font-weight:700; color:var(--text)}
+  .modal-x{
+    background:none; border:0; color:var(--dim2); cursor:pointer;
+    font-size:13px; line-height:1; padding:4px; font-family:inherit; border-radius:5px;
+  }
+  .modal-x:hover{color:var(--text); background:var(--panel2)}
+  .modal-body{
+    padding:10px 16px 0; font-size:13px; line-height:1.8; color:var(--dim);
+    word-break:break-word; overflow-y:auto; min-height:0;
+  }
+  .modal-body a{
+    color:var(--main2); text-decoration:none; word-break:break-all;
+    border-bottom:1px solid rgba(52,211,153,.35);
+  }
+  .modal-body a:hover{border-bottom-color:var(--main2)}
+  .modal-body b{color:var(--text)}
+  .modal-body .wxid{
+    display:inline-flex; align-items:center; gap:8px; margin-top:10px;
+    background:var(--bg); border:1px dashed var(--line); border-radius:8px;
+    padding:9px 12px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:13px; color:var(--main2); font-weight:600;
+  }
+  .modal-foot{
+    display:flex; justify-content:flex-end; gap:8px; padding:16px;
+  }
+  .modal-foot button{
+    border-radius:8px; font-size:12.5px; font-weight:700; padding:8px 16px;
+    cursor:pointer; font-family:inherit; transition:.15s; border:1px solid transparent;
+  }
+  .m-ghost{background:none; border-color:var(--line); color:var(--dim)}
+  .m-ghost:hover{color:var(--text); border-color:#4a5364}
+  .m-primary{background:var(--main); color:#fff}
+  .m-primary:hover{background:#047857}
+  .m-danger{background:#7f1d1d; color:#fee2e2}
+  .m-danger:hover{background:#991b1b}
+
+  /* 窄屏：上下堆叠，不显示拖动条 */
+  @media(max-width:820px){
+    main{display:flex; flex-direction:column}
+    .splitter{display:none}
+    .pane.left{flex:0 0 38%; border-bottom:1px solid var(--line)}
+    .pane.right{flex:1 1 auto}
+    main.only-left .pane.left,
+    main.only-right .pane.right{flex:1 1 auto}
+    header{flex-wrap:wrap; gap:10px}
+    header h1{width:100%}
+    header .seg{margin-left:6px}
+    .stage{padding:0 12px}
+    /* 窄屏底部：统计和按钮各占一行，否则页脚撑出视口、整页横向被裁 */
+    footer{flex-wrap:wrap; gap:6px 12px; padding:8px 14px}
+    footer .stat{font-size:10.5px}
+    footer .grow{display:none}
+    .btn-dl,.btn-copy{flex:1 1 40%; justify-content:center}
+    .fab{right:14px; bottom:14px}
+  }
+
+  /* ============================================================
+     浅色模式：只换界面皮肤（--bg/--panel/--line 这批变量 + 少量写死的色），
+     导出给公众号的那份 HTML 完全不受影响 —— 那边的颜色是 build() 里写死的。
+     ============================================================ */
+  html[data-ui="light"]{
+    color-scheme:light;
+    --bg:#f4f6f9; --panel:#ffffff; --panel2:#eef1f6; --line:#dfe4ec;
+    --text:#1b2027; --dim:#5c6675; --dim2:#8a93a1;
+    --main:#059669; --main2:#047857; --danger:#dc2626; --warn:#b45309;
+  }
+  html[data-ui="light"] .themes button:hover,
+  html[data-ui="light"] .pane-head button:hover,
+  html[data-ui="light"] .btn-dl:hover,
+  html[data-ui="light"] .help:hover,
+  html[data-ui="light"] .m-ghost:hover{border-color:#c3c9d4}
+  html[data-ui="light"] .seg button:hover{background:#e7ebf2; color:var(--text)}
+  html[data-ui="light"] .seg button.on{background:#d5dbe6; color:#111827}
+  html[data-ui="light"] .splitter::before{background:#c3c9d4}
+  html[data-ui="light"] textarea{color:#30363d}
+  /* 右栏底色：深色是深灰径向渐变，浅色换成自上而下的一点灰白 */
+  html[data-ui="light"] .stage{background:radial-gradient(120% 90% at 50% 0%, #ffffff 0%, #eaeef4 72%)}
+  html[data-ui="light"] main.mode-pc .stage{background:#e6e8ec}
+  html[data-ui="light"] .modal-card{border-color:var(--line); box-shadow:0 24px 60px rgba(15,23,42,.22)}
+  html[data-ui="light"] .fab{
+    background:rgba(255,255,255,.95); color:#374151;
+    border-color:rgba(15,17,21,.1); box-shadow:0 8px 22px rgba(15,23,42,.16);
+  }
+  html[data-ui="light"] .fab:hover{background:#fff}
+</style>
+<script>
+/* 早于样式生效就读一次界面配色，避免浅色用户刷新时先闪一下深色 */
+try{
+  var __saved = JSON.parse(localStorage.getItem('gzh-paiban-v2') || 'null');
+  if(__saved && __saved.ui === 'light') document.documentElement.setAttribute('data-ui', 'light');
+}catch(e){}
+</script>
+</head>
+<body>
+
+<header>
+  <h1>公众号文章排版器<span>Markdown → 微信 HTML</span></h1>
+  <div class="themes" id="themes"></div>
+  <div class="seg" id="uiSeg" title="界面配色：深色 / 浅色"></div>
+  <div class="seg" id="layoutSeg" title="栏位布局（也可双击中间的分隔条恢复等分）"></div>
+  <button class="help" id="helpBtn" title="联系作者 / 获取微信号" onclick="showHelp()">?</button>
+</header>
+
+<main id="main">
+  <section class="pane left">
+    <div class="pane-head">
+      <span>Markdown</span>
+      <span class="grow"></span>
+      <button onclick="clearAll()">清空</button>
+      <button onclick="document.getElementById('file').click()">导入 .md</button>
+      <input type="file" id="file" accept=".md,.txt" style="display:none" onchange="importFile(this)">
+    </div>
+    <textarea id="src" spellcheck="false" placeholder="把文章粘进来，或用左上角导入 .md 文件。
+
+支持的语法：
+# 一级标题（不渲染，只做文章名）
+## 章节标题
+### 小节标题
+普通段落
+**加粗**   ==高亮==   ++下划线++   ~~删除~~
+`行内代码`
+> 引用
+- 无序列表
+1. 有序列表
+```代码块```
+![说明](图片地址)
+---"></textarea>
+  </section>
+
+  <div class="splitter" id="splitter" title="拖动调整宽度，双击恢复等分"></div>
+
+  <section class="pane right">
+    <div class="pane-head">
+      <span id="modeLabel">HTML预览</span>
+      <div class="seg" id="modeSeg">
+        <button data-mode="phone" title="手机预览 · 375px">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4.5" y="1.5" width="7" height="13" rx="1.8"/><path d="M7 12.6h2"/></svg>
+          手机
+        </button>
+        <button data-mode="pc" title="PC 预览 · 677px，无外壳">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2.5" width="13" height="8.5" rx="1.4"/><path d="M5.5 14h5"/></svg>
+          PC
+        </button>
+      </div>
+      <span class="grow"></span>
+      <span id="hint" style="color:var(--dim2);text-transform:none;letter-spacing:0"></span>
+      <button id="syncBtn" title="左右栏同步滚动">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5 9.5 6.5"/><path d="M10.8 4.2 12 3a2.4 2.4 0 0 1 3.4 3.4l-1.2 1.2"/><path d="M5.2 11.8 4 13a2.4 2.4 0 0 1-3.4-3.4l1.2-1.2"/></svg>
+        同步滚动
+      </button>
+    </div>
+    <div class="stage" id="stage">
+      <div class="device">
+        <div class="island"><span class="cam"></span></div>
+        <div class="key power"></div>
+        <div class="key v1"></div>
+        <div class="key v2"></div>
+        <div class="screen" id="screen"></div>
+        <div class="home-bar"></div>
+      </div>
+      <div class="pcwrap">
+        <div class="pccard" id="pcscreen"></div>
+      </div>
+      <button class="fab" id="fab" title="回到顶部" onclick="toTop()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5V3.8"/><path d="M3.8 8 8 3.8 12.2 8"/></svg>
+      </button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span class="stat">总计 <b id="s-words">0</b> 字</span>
+  <span class="stat">汉字 <b id="s-han">0</b></span>
+  <span class="stat">英文 <b id="s-en">0</b></span>
+  <span class="stat">标点 <b id="s-punc">0</b></span>
+  <span class="stat">章节 <b id="s-chap">0</b></span>
+  <span class="stat" id="s-warn"></span>
+  <span class="grow"></span>
+  <button class="btn-dl" id="dlBtn" onclick="downloadHtml()" title="下载排版后的 HTML 文件">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v7.4"/><path d="M4.8 7 8 10.2 11.2 7"/><path d="M2.8 12.6h10.4"/></svg>
+    下载 HTML
+  </button>
+  <button class="btn-copy" id="copyBtn" onclick="copyRich()">复制到公众号</button>
+</footer>
+
+<!-- 自绘弹窗：替代原生 alert / confirm -->
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="modal-mask" data-close="1"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="modal-head">
+      <b id="mTitle"></b>
+      <button class="modal-x" data-close="1" title="关闭">✕</button>
+    </div>
+    <div class="modal-body" id="mBody"></div>
+    <div class="modal-foot" id="mFoot"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   1. 主题定义
+   六套主题：结构（chapter 类型）+ 配色。颜色全部写死在输出里，
+   因为公众号不支持 CSS 变量。
+   ============================================================ */
+const FONT = "-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif";
+const SERIF = "'Songti SC','STSong','Noto Serif SC','Source Han Serif SC',Georgia,'Times New Roman',serif";
+const MONO = "'SF Mono',Consolas,Monaco,monospace";
+
+const THEMES = {
+  green: {
+    label:'摸鱼绿', dot:'#059669', chapter:'magazine',
+    fs:14, pad:'20px', list:'pill', quote:'dash', h3:'marker',
+    pillBg:'#E8F6F0', pillText:'#047857', pillDot:'#059669', quoteBorder:'#BBF7D0',
+    main:'#059669', light:'#F0FDF4', lightBorder:'#BBF7D0',
+    accent:'#FDE68A', accentText:'#111827',
+    title:'#111827', body:'#374151', sub:'#9CA3AF', hair:'#E5E7EB',
+    paper:'#ffffff', page:'#ffffff', radius:'16px',
+    underline:'border-bottom:2px solid #A7F3D0;font-weight:600;',
+    bold:'color:#059669;font-weight:700;',
+    quoteBg:'#F9FAFB', quoteLine:'#D1D5DB', quoteStyle:'dashed',
+    cardBg:'#F0FDF4', cardBar:'#059669', cardBorder:'none', cardShadow:'none',
+    divider:'#D1D5DB'
+  },
+  red: {
+    label:'红白色系', dot:'#DC2626', chapter:'redblock',
+    fs:15, pad:'10px', list:'pill', quote:'bar', h3:'bar',
+    pillBg:'#FEE2E2', pillText:'#991B1B', pillDot:'#DC2626', quoteBorder:'#FECACA',
+    main:'#DC2626', light:'#FEF2F2', lightBorder:'#FECACA',
+    accent:'#FECACA', accentText:'#7F1D1D',
+    title:'#1C1917', body:'#3F3F46', sub:'#A1A1AA', hair:'#E7E5E4',
+    paper:'#ffffff', page:'#ffffff', radius:'10px',
+    underline:'border-bottom:2px solid #FECACA;font-weight:600;',
+    bold:'color:#DC2626;font-weight:700;',
+    quoteBg:'#FEF2F2', quoteLine:'#FECACA', quoteStyle:'solid',
+    cardBg:'#FEF2F2', cardBar:'#DC2626', cardBorder:'none', cardShadow:'none',
+    divider:'#E7E5E4'
+  },
+  graphite: {
+    label:'石墨极简', dot:'#52525B', chapter:'watermark',
+    fs:15, pad:'10px', list:'pill', quote:'bar', h3:'bar',
+    pillBg:'#F4F4F5', pillText:'#27272A', pillDot:'#52525B', quoteBorder:'#E4E4E7',
+    main:'#52525B', light:'#FAFAFA', lightBorder:'#E4E4E7',
+    accent:'#E4E4E7', accentText:'#27272A',
+    title:'#27272A', body:'#3F3F46', sub:'#A1A1AA', hair:'#E4E4E7',
+    paper:'#ffffff', page:'#ffffff', radius:'4px',
+    underline:'border-bottom:2px solid #52525B;font-weight:600;',
+    bold:'color:#18181B;font-weight:800;',
+    quoteBg:'#FAFAFA', quoteLine:'#D4D4D8', quoteStyle:'solid',
+    cardBg:'#FAFAFA', cardBar:'#27272A', cardBorder:'none', cardShadow:'none',
+    divider:'#E4E4E7'
+  },
+  zen: {
+    label:'留白禅意', dot:'#4A5D52', chapter:'zen',
+    fs:15, pad:'16px', list:'line', quote:'bar', h3:'serif',
+    pillBg:'#EEF3F0', pillText:'#3D5046', pillDot:'#4A5D52', quoteBorder:'#B5C8BC',
+    main:'#4A5D52', light:'#F6F8F6', lightBorder:'#DDE5DF',
+    accent:'#DDE5DF', accentText:'#2B3630',
+    title:'#2B2B2B', body:'#4B4B4B', sub:'#A8A8A8', hair:'#E8EAE8',
+    paper:'#ffffff', page:'#ffffff', radius:'0',
+    underline:'border-bottom:1.5px solid #B5C8BC;font-weight:500;',
+    bold:'color:#2B2B2B;font-weight:700;',
+    quoteBg:'transparent', quoteLine:'#B5C8BC', quoteStyle:'none',
+    cardBg:'transparent', cardBar:'#4A5D52', cardBorder:'1px solid #E8EAE8', cardShadow:'none',
+    divider:'#E8EAE8'
+  },
+  ticket: {
+    label:'摸鱼票据', dot:'#059669', chapter:'ticket',
+    fs:14, pad:'20px', list:'card', quote:'bar', h3:'bar',
+    pillBg:'#F0FDF4', pillText:'#1a1a1a', pillDot:'#059669', quoteBorder:'#A7F3D0',
+    main:'#059669', light:'#F0FDF4', lightBorder:'#A7F3D0',
+    accent:'#A7F3D0', accentText:'#111111',
+    title:'#1a1a1a', body:'#555555', sub:'#999999', hair:'#1a1a1a',
+    paper:'#fffef8', page:'#ffffff', radius:'0',
+    underline:'border-bottom:2px solid #A7F3D0;font-weight:600;',
+    bold:'color:#059669;font-weight:700;',
+    quoteBg:'#F0FDF4', quoteLine:'#A7F3D0', quoteStyle:'dashed',
+    cardBg:'#F0FDF4', cardBar:'#059669', cardBorder:'none', cardShadow:'none',
+    divider:'#1a1a1a'
+  },
+  olive: {
+    label:'橄榄手记', dot:'#ed7b2f', chapter:'journal',
+    fs:15, pad:'20px', list:'pill', quote:'bar', h3:'underline',
+    pillBg:'#EAEBE5', pillText:'#23251d', pillDot:'#ed7b2f', quoteBorder:'#E8DCCB',
+    main:'#ed7b2f', light:'#FBF7F2', lightBorder:'#E8DCCB',
+    accent:'#F3E3D2', accentText:'#5A3A1A',
+    title:'#23251d', body:'#3F423A', sub:'#9EA096', hair:'#BFC1B7',
+    paper:'#ffffff', page:'#ffffff', radius:'6px',
+    underline:'border-bottom:2px solid #ed7b2f;font-weight:600;',
+    bold:'color:#23251d;font-weight:800;',
+    quoteBg:'#FBF7F2', quoteLine:'#ed7b2f', quoteStyle:'solid',
+    cardBg:'#FBF7F2', cardBar:'#ed7b2f', cardBorder:'none', cardShadow:'none',
+    divider:'#BFC1B7'
+  }
+};
+
+let cur = 'ticket';
+
+/* ============================================================
+   2. Markdown 解析
+   ============================================================ */
+function parse(md){
+  const L = md.replace(/\r\n/g,'\n').split('\n');
+  const out = [];
+  let i = 0;
+  const isBlockStart = s =>
+    /^(#{1,6}\s|```|>|\s*([-*+]|\d+\.)\s|!\[|\s*---\s*$)/.test(s);
+
+  while(i < L.length){
+    const line = L[i];
+    if(!line.trim()){ i++; continue; }
+
+    // 围栏代码
+    if(/^```/.test(line)){
+      const lang = line.slice(3).trim();
+      const buf = []; i++;
+      while(i < L.length && !/^```/.test(L[i])){ buf.push(L[i]); i++; }
+      i++;
+      out.push({t:'code', lang, lines:buf});
+      continue;
+    }
+    // 标题
+    let m = line.match(/^(#{1,6})\s+(.*)$/);
+    if(m){ out.push({t:'h', level:m[1].length, text:m[2].trim()}); i++; continue; }
+    // 分割线
+    if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)){ out.push({t:'hr'}); i++; continue; }
+    // 引用
+    if(/^>\s?/.test(line)){
+      const buf = [];
+      while(i < L.length && /^>\s?/.test(L[i])){ buf.push(L[i].replace(/^>\s?/,'')); i++; }
+      out.push({t:'quote', text:buf.join('\n')});
+      continue;
+    }
+    // 独占一行的图片
+    m = line.match(/^\s*!\[([^\]]*)\]\(([^)\s]+)[^)]*\)\s*$/);
+    if(m){ out.push({t:'img', alt:m[1], src:m[2]}); i++; continue; }
+    // 列表
+    if(/^\s*([-*+]|\d+\.)\s+/.test(line)){
+      const ordered = /^\s*\d+\./.test(line);
+      const items = [];
+      while(i < L.length && /^\s*([-*+]|\d+\.)\s+/.test(L[i])){
+        items.push(L[i].replace(/^\s*([-*+]|\d+\.)\s+/,'').trim()); i++;
+      }
+      out.push({t:'list', ordered, items});
+      continue;
+    }
+    // 段落
+    const buf = [line.trim()];
+    i++;
+    while(i < L.length && L[i].trim() && !isBlockStart(L[i])){
+      buf.push(L[i].trim()); i++;
+    }
+    out.push({t:'p', text:buf.join('')});
+  }
+  return out;
+}
+
+/* ============================================================
+   3. 行内渲染
+   规则：所有文字节点必须包 <span leaf="">，否则粘到公众号样式全丢。
+   ============================================================ */
+function esc(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function leaf(s){ return '<span leaf="">' + s + '</span>'; }
+
+function inline(text, th){
+  const store = [];
+  // 占位符：已渲染片段先存起来，最后再拼回去
+  const ph = h => { store.push(h); return '\u0002' + (store.length - 1) + '\u0002'; };
+
+  let s = text;
+
+  // 行内代码
+  s = s.replace(/`([^`]+)`/g, (_, c) => ph(
+    `<span style="background:#F3F4F6;color:#1F2937;padding:2px 6px;border-radius:4px;font-size:13px;font-weight:600;font-family:${MONO};">${leaf(esc(c))}</span>`));
+
+  // 链接只保留文字（公众号正文外链点不了）
+  s = s.replace(/\[([^\]]*)\]\(([^)]+)\)/g, '$1');
+
+  // 行内标记
+  s = s.replace(/\*\*([^*]+)\*\*/g, (_, x) => ph(`<strong style="${th.bold}">${leaf(esc(x))}</strong>`));
+  s = s.replace(/==([^=]+)==/g, (_, x) => ph(
+    `<span style="background:${th.accent};padding:0 4px;font-weight:600;color:${th.accentText};">${leaf(esc(x))}</span>`));
+  s = s.replace(/\+\+([^+]+)\+\+/g, (_, x) => ph(
+    `<span style="${th.underline}">${leaf(esc(x))}</span>`));
+  s = s.replace(/~~([^~]+)~~/g, (_, x) => ph(
+    `<span style="color:${th.sub};text-decoration:line-through;">${leaf(esc(x))}</span>`));
+
+  // 剩下的纯文本也必须包 leaf，否则粘到公众号样式整片丢失
+  return s.split(/(\u0002\d+\u0002)/).map(seg => {
+    const m = seg.match(/^\u0002(\d+)\u0002$/);
+    if(m) return store[+m[1]];
+    return seg ? leaf(esc(seg)) : '';
+  }).join('');
+}
+
+/* 章节英文标签：先认标题里的英文，再查词典，都没命中就留空（不硬凑） */
+const EN_DICT = [
+  [/废|行不通|堵死|失效|没用|失败|障碍|踩坑/,'DEAD END'],
+  [/方案|思路|方法论|怎么想/,'APPROACH'], [/安装|部署|环境|配置/,'SETUP'],
+  [/连|连接|调试|通信/,'CONNECT'],
+  [/换|绕|变通|另一条|替代/,'DETOUR'], [/执行|操作|动手|跑通/,'EXECUTE'],
+  [/自检|验证|检查|复查/,'VERIFY'], [/结果|效果|数据|成绩/,'RESULT'],
+  [/总结|复盘|回顾|收尾/,'REVIEW'], [/想法|思考|感受|随想|体会/,'THOUGHTS'],
+  [/背景|起因|缘起/,'BACKGROUND'], [/对比|比较|区别/,'COMPARE'],
+  [/原理|机制|本质/,'HOW IT WORKS'], [/步骤|流程|过程/,'STEPS'],
+  [/工具|项目|选型|清单/,'TOOLS'], [/成本|价格|费用|钱/,'COST'],
+  [/风险|注意|坑/,'RISK'], [/时间|省|效率|快/,'SAVING']
+];
+function enTag(title){
+  const w = title.match(/[A-Za-z][A-Za-z\s&\-]{2,}/);
+  if(w) return w[0].toUpperCase().trim();
+  for(const [re, tag] of EN_DICT) if(re.test(title)) return tag;
+  return '';
+}
+
+/* 末章识别：结语类用特殊编号 */
+const isEnding = t => /^(结语|写在最后|总结|尾声|后记|一点想法|最后|收尾)/.test(t.replace(/[一二三四五六七八九十]+、/,''));
+
+/* ============================================================
+   4. 章节标题：六种结构
+   ============================================================ */
+function stripNum(t){ return t.replace(/^\s*([一二三四五六七八九十百]+[、.．]|\d+[、.．])\s*/, '').trim(); }
+
+function chapter(num, titleRaw, en, th, isLast){
+  const title = stripNum(titleRaw);
+  // 末章变体：各主题按组件库的写法区分
+  const n = isLast
+    ? (th.chapter === 'zen' || th.chapter === 'watermark' || th.chapter === 'redblock' ? '∞'
+      : th.chapter === 'magazine' ? '///'
+      : th.chapter === 'ticket' ? num + ' · 结语'
+      : num)
+    : num;
+  const tag = isLast
+    ? (th.chapter === 'zen' ? 'POSTSCRIPT'
+      : (th.chapter === 'ticket' || th.chapter === 'magazine') ? '' : 'THE END')
+    : en;
+  const base = `margin-bottom:32px;padding:0 ${th.pad};`;
+
+  if(th.chapter === 'magazine'){   // 摸鱼绿：大数字 + 竖线
+    return `<section style="${base}margin-top:${isLast?48:40}px;">
+  <section style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+    <section style="text-align:center;flex-shrink:0;">
+      <p style="margin:0;font-size:28px;font-weight:900;color:${th.main};line-height:1;letter-spacing:-2px;">${leaf(n)}</p>
+      <p style="margin:0;font-size:8px;font-weight:700;color:#D1D5DB;letter-spacing:2px;">${leaf(isLast ? 'LAST' : 'PART')}</p>
+    </section>
+    <span style="width:1px;height:36px;background:${th.hair};flex-shrink:0;display:inline-block;overflow:hidden;font-size:0;line-height:0;">${leaf('&nbsp;')}</span>
+    <section>
+      <p style="margin:0 0 1px;font-size:17px;font-weight:900;color:${th.title};letter-spacing:0.3px;">${leaf(esc(title))}</p>
+      ${tag ? `<p style="margin:0;font-size:11px;font-weight:600;color:${th.sub};letter-spacing:1.5px;">${leaf(esc(tag))}</p>` : ''}
+    </section>
+  </section>
+</section>
+`;
+  }
+
+  if(th.chapter === 'redblock'){  // 红白：红底编号 + 底部红线
+    return `<section style="${base}margin-top:${isLast?48:40}px;">
+  <section style="display:flex;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:3px solid ${th.main};">
+    <span style="display:inline-block;background:${th.main};color:#FFFFFF;font-size:18px;font-weight:900;padding:4px 14px;border-radius:6px;margin-right:14px;line-height:1.3;">${leaf(n)}</span>
+    <section>
+      ${tag ? `<p style="font-size:10px;color:${th.main};font-weight:700;letter-spacing:3px;margin:0 0 2px;text-transform:uppercase;">${leaf(esc(tag))}</p>` : ''}
+      <h3 style="font-size:18px;font-weight:800;color:${th.title};margin:0;letter-spacing:0.5px;">${leaf(esc(title))}</h3>
+    </section>
+  </section>
+</section>
+`;
+  }
+
+  if(th.chapter === 'watermark'){ // 石墨：超大灰水印数字
+    return `<section style="${base}margin-top:${isLast?56:48}px;">
+  <section style="padding-bottom:20px;border-bottom:1px solid ${th.hair};">
+    <p style="font-size:48px;font-weight:900;color:${th.hair};margin:0;line-height:1;letter-spacing:-2px;">${leaf(n)}</p>
+    <section style="margin-top:-8px;">
+      ${tag ? `<p style="font-size:10px;color:${th.sub};font-weight:500;letter-spacing:3px;margin:0 0 6px;text-transform:uppercase;">${leaf(esc(tag))}</p>` : ''}
+      <h3 style="font-size:20px;font-weight:800;color:${th.title};margin:0;letter-spacing:0.5px;line-height:1.4;">${leaf(esc(title))}</h3>
+    </section>
+  </section>
+</section>
+`;
+  }
+
+  if(th.chapter === 'zen'){       // 禅意：英文 + 衬线 + 短线
+    return `<section style="${base}margin-top:${isLast?64:56}px;">
+  <p style="font-size:10px;color:${th.main};font-weight:600;letter-spacing:4px;margin:0 0 10px;text-transform:uppercase;">${leaf(tag ? n + ' · ' + esc(tag) : n)}</p>
+  <h3 style="font-family:${SERIF};font-size:22px;font-weight:700;color:${th.title};margin:0 0 16px;letter-spacing:0.5px;line-height:1.4;">${leaf(esc(title))}</h3>
+  <section style="width:40px;height:2px;background:${th.main};margin-bottom:20px;">${leaf('<br>')}</section>
+</section>
+`;
+  }
+
+  if(th.chapter === 'ticket'){    // 票据：实心方块 + 黑线（标题与英文竖排，避免 375 宽下挤成两行）
+    return `<section style="${base}margin-top:${isLast?48:40}px;">
+  <section style="display:flex;align-items:center;gap:12px;margin-bottom:22px;padding-bottom:12px;border-bottom:2px solid ${th.hair};">
+    <section style="background:${th.main};color:#fff;font-size:12px;font-weight:800;padding:6px 12px;letter-spacing:2px;flex-shrink:0;">${leaf(n)}</section>
+    <section style="flex:1;min-width:0;">
+      <p style="margin:0;font-size:18px;font-weight:800;color:${th.title};letter-spacing:1px;line-height:1.45;">${leaf(esc(title))}</p>
+      ${tag ? `<p style="margin:3px 0 0;font-size:11px;color:${th.sub};letter-spacing:1px;">${leaf('/ ' + esc(tag))}</p>` : ''}
+    </section>
+  </section>
+</section>
+`;
+  }
+
+  // journal 橄榄：墨色编号 + PART + 竖线
+  return `<section style="${base}margin-top:${isLast?40:32}px;">
+  <section style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+    <section style="text-align:center;flex-shrink:0;">
+      <p style="margin:0;font-size:24px;font-weight:800;color:${th.title};line-height:1;letter-spacing:-2px;">${leaf(n)}</p>
+      <p style="margin:0;font-size:8px;font-weight:700;color:${th.sub};letter-spacing:2px;">${leaf('PART')}</p>
+    </section>
+    <span style="width:1px;height:36px;background:${th.hair};flex-shrink:0;display:inline-block;overflow:hidden;font-size:0;line-height:0;">${leaf('&nbsp;')}</span>
+    <section>
+      <p style="margin:0 0 1px;font-size:17px;font-weight:800;color:${th.title};letter-spacing:0.2px;">${leaf(esc(title))}</p>
+      ${tag ? `<p style="margin:0;font-size:11px;font-weight:600;color:${th.sub};letter-spacing:1.2px;">${leaf(esc(tag))}</p>` : ''}
+    </section>
+  </section>
+</section>
+`;
+}
+
+/* ============================================================
+   5. 块级渲染
+   ============================================================ */
+
+/* 小节标题：四套写法（对应组件库的 subtitle / 9c / 下划线变体） */
+function subTitle(text, th){
+  const t = leaf(esc(text));
+  if(th.h3 === 'marker'){          // 摸鱼绿：黄色荧光底
+    return `<section style="margin-bottom:18px;padding:0 ${th.pad};">
+  <p style="font-size:15px;font-weight:900;color:#111827;margin:0;line-height:1.7;"><span style="background:${th.accent};padding:0 4px;">${t}</span></p>
+</section>`;
+  }
+  if(th.h3 === 'underline'){       // 橄榄：粗下划线，只覆盖文字宽度
+    return `<section style="margin-bottom:18px;padding:0 ${th.pad};">
+  <p style="margin:0;"><span style="display:inline-block;font-size:16px;font-weight:700;color:${th.title};border-bottom:3px solid ${th.main};padding-bottom:2px;">${t}</span></p>
+</section>`;
+  }
+  if(th.h3 === 'serif'){           // 禅意：衬线 + 短线
+    return `<section style="margin-bottom:20px;padding:0 ${th.pad};">
+  <p style="margin:0 0 8px;font-family:${SERIF};font-size:17px;font-weight:700;color:${th.title};letter-spacing:0.3px;">${t}</p>
+  <section style="width:24px;height:1px;background:${th.quoteBorder};">${leaf('<br>')}</section>
+</section>`;
+  }
+  return `<section style="margin-bottom:16px;padding:0 ${th.pad};">
+  <section style="display:flex;align-items:center;gap:8px;">
+    <section style="width:4px;height:15px;background:${th.main};flex-shrink:0;">${leaf('<br>')}</section>
+    <p style="font-size:15px;font-weight:700;color:${th.title};margin:0;">${t}</p>
+  </section>
+</section>`;
+}
+
+/* 列表项拆成「标签 + 说明」：**标签**：说明 */
+function splitLi(t){
+  const m = t.match(/^\s*\*\*([^*]+)\*\*\s*[：:]\s*([\s\S]+)$/);
+  if(m) return { label:m[1], desc:m[2] };
+  const m2 = t.match(/^\s*\*\*([^*]+)\*\*\s*$/);
+  if(m2) return { label:m2[1], desc:'' };
+  return { label:'', desc:t };
+}
+
+/* 列表：三种结构 —— 胶囊标签 / 票据卡片 / 细线行 */
+function renderList(b, th){
+  const items = b.items.map(splitLi);
+  const wrap = inner => `<section style="padding:0 ${th.pad};margin-bottom:16px;">${inner}</section>`;
+
+  if(th.list === 'card'){          // 票据：定高绿方块 + 米黄卡片 + 撕票虚线
+    // 绿方块用固定 36×36，不再跟着段落一起长高：
+    // 外层 flex-start 阻止 stretch，内层用 line-height 垂直居中，比嵌套 flex 更适合公众号。
+    const rows = items.map((it, k) => `
+  <section style="background:${th.paper};border:1px solid #eee;margin-bottom:12px;">
+    <section style="display:flex;align-items:flex-start;">
+      <section style="width:36px;height:36px;line-height:36px;background:${th.main};color:#fff;font-size:12px;font-weight:800;text-align:center;flex-shrink:0;">${leaf(b.ordered ? String(k+1) : '·')}</section>
+      <section style="flex:1;padding:12px 16px;font-size:13px;color:#555;line-height:1.7;border-left:1px dashed ${th.quoteBorder};">
+        ${it.label ? `<span style="font-weight:600;color:#1a1a1a;">${leaf(esc(it.label))}</span><span leaf="">：</span>` : ''}${it.desc ? inline(it.desc, th) : ''}
+      </section>
+    </section>
+  </section>`).join('');
+    return wrap(rows);
+  }
+
+  if(th.list === 'line'){          // 禅意：竖排细线
+    const rows = items.map((it, k) => `
+  <section style="display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid ${th.hair};">
+    <p style="font-size:11px;color:${th.main};font-weight:600;letter-spacing:1px;margin:0;min-width:26px;">${leaf(b.ordered ? String(k+1).padStart(2,'0') : '·')}</p>
+    <p style="font-size:14px;color:${th.title};margin:0;line-height:1.75;padding-left:12px;flex:1;">${inline(it.label ? '**' + it.label + '**：' + it.desc : it.desc, th)}</p>
+  </section>`).join('');
+    return wrap(`<section style="border-top:1px solid ${th.hair};">${rows}</section>`);
+  }
+
+  // 有序列表：圆标数字（组件 11a/11g），与胶囊区分开
+  if(b.ordered){
+    const rows = items.map((it, k) => `
+  <section style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:${th.main};color:#fff;font-size:12px;font-weight:700;border-radius:50%;flex-shrink:0;margin-top:2px;">${leaf(String(k+1))}</span>
+    <p style="font-size:${th.fs}px;color:${th.body};margin:0;line-height:1.8;flex:1;text-align:justify;">${inline(it.label ? '**' + it.label + '**：' + it.desc : it.desc, th)}</p>
+  </section>`).join('');
+    return wrap(rows);
+  }
+
+  // 胶囊标签：绿 / 红白 / 石墨 / 橄榄
+  const rows = items.map(it => {
+    if(!it.label) return `
+  <section style="margin-bottom:12px;">
+    <p style="font-size:${th.fs}px;color:${th.body};margin:0;line-height:1.8;text-align:justify;">${inline(it.desc, th)}</p>
+  </section>`;
+    return `
+  <section style="margin-bottom:14px;">
+    <p style="margin:0 0 6px;">
+      <span style="display:inline-block;font-size:13px;font-weight:700;color:${th.pillText};background:${th.pillBg};padding:3px 10px;border-radius:999px;"><span style="display:inline-block;width:6px;height:6px;background:${th.pillDot};border-radius:50%;margin-right:5px;vertical-align:middle;">${leaf('<br>')}</span>${leaf(esc(it.label))}</span>
+    </p>
+    ${it.desc ? `<p style="font-size:13px;color:${th.body};margin:0;line-height:1.7;text-align:justify;">${inline(it.desc, th)}</p>` : ''}
+  </section>`;
+  }).join('');
+  return wrap(rows);
+}
+
+function renderBlocks(blocks, th){
+  let html = '';
+  let chapNo = 0;
+  const chapters = blocks.filter(b => b.t === 'h' && b.level === 2);
+
+  for(const b of blocks){
+    switch(b.t){
+      case 'h':
+        if(b.level === 1){ /* 文章标题不在正文里渲染 */ break; }
+        if(b.level === 2){
+          chapNo++;
+          const last = (chapNo === chapters.length && chapters.length > 1 && isEnding(b.text));
+          html += chapter(String(chapNo).padStart(2,'0'), b.text, enTag(b.text), th, last);
+        } else {
+          html += subTitle(b.text, th);
+        }
+        break;
+
+      case 'p':
+        html += `<section style="padding:0 ${th.pad};">
+  <p style="font-size:${th.fs}px;color:${th.body};line-height:1.9;margin-bottom:16px;text-align:justify;">${inline(b.text, th)}</p>
+</section>`;
+        break;
+
+      case 'quote': {
+        const q = `<p style="font-size:${th.fs}px;color:${th.title};font-weight:600;line-height:1.8;margin:0;">${inline(b.text, th)}</p>`;
+        html += th.quote === 'dash'
+          ? `<section style="padding:0 ${th.pad};margin-bottom:20px;">
+  <section style="background:${th.quoteBg};border:1px dashed ${th.quoteBorder};border-radius:8px;padding:14px 16px;">${q}</section>
+</section>`
+          : `<section style="padding:0 ${th.pad};margin-bottom:20px;">
+  <section style="background:${th.quoteBg};border-left:4px solid ${th.main};padding:14px 16px;">${q}</section>
+</section>`;
+        break;
+      }
+
+      case 'list':
+        html += renderList(b, th);
+        break;
+
+      case 'code':
+        // 每行一个 <p style="margin:0">，绝不用 white-space:pre
+        html += `<section style="padding:0 ${th.pad};margin-bottom:16px;">
+  <section style="border-radius:8px;overflow:hidden;background:#1E293B;">
+    <section style="padding:8px 14px;background:#0F172A;">
+      <span style="font-size:11px;color:#64748B;font-family:${MONO};letter-spacing:1px;">${leaf(esc(b.lang || 'shell'))}</span>
+    </section>
+    <section style="padding:12px 14px;">${b.lines.map(l =>
+      `<p style="margin:0;font-family:${MONO};font-size:12px;line-height:1.7;color:#E2E8F0;letter-spacing:0;word-break:break-word;overflow-wrap:break-word;">${leaf(esc(l) || '&nbsp;')}</p>`).join('')}
+    </section>
+  </section>
+</section>`;
+        break;
+
+      case 'img':
+        html += `<section style="padding:0 ${th.pad};margin-bottom:16px;">
+  <section style="background:${th.paper};border:1px solid ${th.hair};padding:6px;">
+    <figure style="margin:0;">${leaf(`<img src="${esc(b.src)}" style="max-width:100%;height:auto;display:block;margin:0 auto;">`)}</figure>
+  </section>${b.alt ? `
+  <p style="font-size:12px;color:${th.sub};text-align:center;margin:8px 0 0;">${leaf('— ' + esc(b.alt))}</p>` : ''}
+</section>`;
+        break;
+
+      case 'hr':
+        html += `<section style="padding:0 ${th.pad};margin-bottom:24px;">
+  <section style="height:1px;background:${th.divider};">${leaf('<br>')}</section>
+</section>`;
+        break;
+    }
+  }
+  return html;
+}
+
+/* ============================================================
+   6. 组装整篇
+   ============================================================ */
+/* 三连引导：点赞 / 转发 / 关注
+   用 unicode 字形 + 圆形底托，全是 CSS，不依赖图片 —— 粘到公众号不会丢图。
+   ♥ ➤ ＋ 三个字形在各平台都是纯文本渲染，不会被当成彩色 emoji。 */
+function endingIcons(th){
+  // ↻ 是各平台通用的「转发 / 转载」符号，比 ➤ 更像社交动作，也不会被当成彩色 emoji
+  const items = [['♥','点赞'], ['↻','转发'], ['＋','关注']];
+  return `<section style="display:flex;justify-content:center;margin:16px 0 0;">
+  ${items.map(([g, t]) => `<section style="width:33.33%;text-align:center;">
+    <span style="display:inline-block;width:34px;height:34px;line-height:34px;border-radius:50%;background:${th.pillBg};color:${th.pillText};font-size:16px;font-weight:700;text-align:center;">${leaf(g)}</span>
+    <p style="font-size:11px;color:${th.sub};margin:6px 0 0;letter-spacing:1px;line-height:1.4;">${leaf(t)}</p>
+  </section>`).join('\n  ')}
+</section>`;
+}
+
+function ending(th){
+  const line = '都看到这里了，请随手点赞、转发、关注一下吧！';
+  if(th.chapter === 'ticket'){    // 票据：黑描边硬阴影，呼应封面
+    return `<section style="padding:0 ${th.pad};margin-top:8px;">
+  <section style="background:${th.paper};border:2px solid #1a1a1a;box-shadow:3px 3px 0 #1a1a1a;padding:22px 18px;text-align:center;">
+    <p style="font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.8;margin:0;">${leaf(line)}</p>
+    ${endingIcons(th)}
+    <section style="border-top:1px dashed ${th.quoteBorder};padding-top:12px;margin-top:16px;">
+      <p style="font-size:10px;color:#888;letter-spacing:3px;margin:0;">${leaf('THANKS FOR READING')}</p>
+    </section>
+  </section>
+</section>`;
+  }
+  return `<section style="padding:0 ${th.pad};margin-top:8px;">
+  <section style="height:2px;background:${th.main};opacity:0.25;margin-bottom:20px;">${leaf('<br>')}</section>
+  <p style="font-size:13px;color:${th.sub};text-align:center;line-height:1.9;margin:0;">${leaf(line)}</p>
+  ${endingIcons(th)}
+  <p style="font-size:10px;color:${th.sub};text-align:center;letter-spacing:2px;margin:14px 0 0;">${leaf('THANKS FOR READING')}</p>
+</section>`;
+}
+
+function build(md, key){
+  const th = THEMES[key];
+  const blocks = parse(md);
+  const body = renderBlocks(blocks, th);
+
+  return `<section style="max-width:677px;margin:0 auto;background:${th.page};font-family:${FONT};color:${th.body};line-height:1.75;letter-spacing:0.5px;">
+
+${body}
+
+${ending(th)}
+
+</section>`;
+}
+
+/* ============================================================
+   7. 界面
+   ============================================================ */
+const elSrc = document.getElementById('src');
+const elOut = document.createElement('section');
+elOut.id = 'out';
+const elScreen = document.getElementById('screen');
+const elPcScreen = document.getElementById('pcscreen');
+const elStage = document.getElementById('stage');
+const elMain = document.getElementById('main');
+const elSplitter = document.getElementById('splitter');
+const elSyncBtn = document.getElementById('syncBtn');
+const elFab = document.getElementById('fab');
+
+/* 视图状态：栏位布局 / 预览模式 / 同步滚动 / 左栏宽度 / 界面配色 */
+let layout = 'both';   // both | left | right
+let vmode  = 'phone';  // phone | pc
+let syncOn = true;
+let lw = null;         // 左栏 px，null = 等分
+let uiMode = 'dark';   // dark | light  只影响本工具界面，不影响导出的公众号 HTML
+
+/* ---------- 本地缓存 ---------- */
+const STORE = 'gzh-paiban-v2';
+const OLD = 'gzh-paiban-v1';   // 旧版只有正文和主题，读一次迁移过来
+
+function save(){
+  try{
+    localStorage.setItem(STORE, JSON.stringify({
+      md: elSrc.value, theme: cur, layout, vmode, sync: syncOn, lw, ui: uiMode
+    }));
+  }catch(e){}
+}
+function load(){
+  let d = null;
+  try{ d = JSON.parse(localStorage.getItem(STORE) || 'null'); }catch(e){}
+  if(!d){ try{ d = JSON.parse(localStorage.getItem(OLD) || 'null'); }catch(e){} }
+  if(!d) return;
+  if(d.theme && THEMES[d.theme]) cur = d.theme;
+  if(typeof d.md === 'string') elSrc.value = d.md;
+  if(d.layout === 'both' || d.layout === 'left' || d.layout === 'right') layout = d.layout;
+  if(d.vmode === 'phone' || d.vmode === 'pc') vmode = d.vmode;
+  if(d.sync === false) syncOn = false;
+  if(typeof d.lw === 'number' && d.lw > 0) lw = d.lw;
+  if(d.ui === 'light' || d.ui === 'dark') uiMode = d.ui;
+}
+
+function buildThemeButtons(){
+  const box = document.getElementById('themes');
+  // 前面这块是装饰，不参与选择：调色盘 + 「风格」，让人一眼看出这排是换皮肤
+  const lead = `<span class="themes-lead" title="文章风格">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8a6.2 6.2 0 0 0 0 12.4c.9 0 1.5-.6 1.5-1.4 0-.4-.2-.7-.4-1-.2-.3-.4-.6-.4-1 0-.8.6-1.4 1.4-1.4h1.2c1.1 0 2-.9 2-2C13.3 4.2 10.9 1.8 8 1.8Z"/><circle cx="5.5" cy="6.5" r=".85" fill="currentColor" stroke="none"/><circle cx="8.1" cy="4.9" r=".85" fill="currentColor" stroke="none"/><circle cx="10.5" cy="6.5" r=".85" fill="currentColor" stroke="none"/></svg>
+      风格
+    </span>`;
+  box.innerHTML = lead + Object.entries(THEMES).map(([k, t]) =>
+    `<button data-k="${k}" class="${k===cur?'on':''}" onclick="pick('${k}')">
+      <i style="background:${t.dot}"></i>${t.label}
+    </button>`).join('');
+}
+function pick(k){
+  cur = k;
+  document.querySelectorAll('.themes button').forEach(b =>
+    b.classList.toggle('on', b.dataset.k === k));
+  render();
+}
+
+/* ---------- 界面配色：深色 / 浅色 ----------
+   只切 <html data-ui>，靠 CSS 变量换皮；导出给公众号的样式是 build() 里写死的颜色，不受影响。 */
+const UI_ICONS = {
+  dark:  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 9.7A5.6 5.6 0 0 1 6.3 2.8a5.6 5.6 0 1 0 6.9 6.9Z"/></svg>',
+  light: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="2.9"/><path d="M8 1.6v1.5M8 12.9v1.5M1.6 8h1.5M12.9 8h1.5M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1"/></svg>'
+};
+function buildUiButtons(){
+  const box = document.getElementById('uiSeg');
+  box.innerHTML = [['dark','深色界面'],['light','浅色界面']]
+    .map(([k, t]) => `<button data-ui="${k}" title="${t}">${UI_ICONS[k]}</button>`).join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => setUi(b.dataset.ui));
+}
+function setUi(m){
+  uiMode = (m === 'light') ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-ui', uiMode);
+  document.querySelectorAll('#uiSeg button').forEach(b =>
+    b.classList.toggle('on', b.dataset.ui === uiMode));
+  save();
+}
+
+/* ---------- 栏位布局：双栏 / 只左 / 只右 ---------- */
+const ICONS = {
+  both: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2.5" width="5.6" height="11" rx="1.2"/><rect x="8.9" y="2.5" width="5.6" height="11" rx="1.2"/></svg>',
+  left: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2.5" width="5.6" height="11" rx="1.2" fill="currentColor"/><rect x="8.9" y="2.5" width="5.6" height="11" rx="1.2" opacity=".38"/></svg>',
+  right:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2.5" width="5.6" height="11" rx="1.2" opacity=".38"/><rect x="8.9" y="2.5" width="5.6" height="11" rx="1.2" fill="currentColor"/></svg>'
+};
+function buildLayoutButtons(){
+  const box = document.getElementById('layoutSeg');
+  box.innerHTML = [['both','双栏'],['left','只显示左栏'],['right','只显示右栏']]
+    .map(([k, t]) => `<button data-layout="${k}" title="${t}">${ICONS[k]}</button>`).join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => setLayout(b.dataset.layout));
+}
+function setLayout(k){ layout = k; applyLayout(); save(); }
+function applyLayout(){
+  elMain.classList.toggle('only-left', layout === 'left');
+  elMain.classList.toggle('only-right', layout === 'right');
+  document.querySelectorAll('#layoutSeg button').forEach(b =>
+    b.classList.toggle('on', b.dataset.layout === layout));
+  if(lw && layout === 'both') elMain.style.setProperty('--lw', lw + 'px');
+  else elMain.style.removeProperty('--lw');
+  requestAnimationFrame(fit);
+}
+
+/* ---------- 预览模式：手机 / PC ---------- */
+const scrollMem = { phone:0, pc:0 };
+function scroller(){ return vmode === 'pc' ? elPcScreen : elScreen; }
+
+function setMode(m){
+  if(vmode === m) return;
+  scrollMem[vmode] = scroller().scrollTop;   // 记住离开时的位置
+  vmode = m;
+  applyMode();
+  save();
+}
+function applyMode(){
+  elMain.classList.toggle('mode-pc', vmode === 'pc');
+  document.querySelectorAll('#modeSeg button').forEach(b =>
+    b.classList.toggle('on', b.dataset.mode === vmode));
+  mountPreview();
+  requestAnimationFrame(() => { fit(); updateFab(); });
+}
+function mountPreview(){
+  const host = scroller();
+  if(elOut.parentElement !== host){
+    host.appendChild(elOut);
+    host.scrollTop = scrollMem[vmode] || 0;
+  }
+}
+
+/* ---------- 自适应缩放：右栏被拖窄时整机等比缩小 ---------- */
+function fit(){
+  const cs = getComputedStyle(elStage);
+  const availW = elStage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const availH = elStage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  if(availW <= 4 || availH <= 4) return;
+  // 手机：期望整机（含 12px×2 金属边框）占右栏可用高度的 99%
+  const frame = 24;
+  const devh = Math.max(360, availH * 0.99 - frame);
+  elStage.style.setProperty('--devh', devh.toFixed(1) + 'px');
+  const zPhone = Math.min(1, availW / (375 + frame), availH / (devh + frame));
+  elStage.style.setProperty('--zoom', zPhone.toFixed(4));
+  // PC：677 是桌面微信的阅读宽度
+  const zPc = Math.min(1, availW / 677);
+  elStage.style.setProperty('--pczoom', zPc.toFixed(4));
+}
+if(window.ResizeObserver) new ResizeObserver(() => fit()).observe(elStage);
+window.addEventListener('resize', fit);
+
+/* ---------- 拖动分隔条 ---------- */
+(function(){
+  let d = null;
+  elSplitter.addEventListener('pointerdown', e => {
+    if(layout !== 'both' || window.innerWidth <= 820) return;
+    d = { x: e.clientX, w: document.querySelector('.pane.left').getBoundingClientRect().width };
+    elSplitter.setPointerCapture(e.pointerId);
+    elSplitter.classList.add('on');
+    document.body.classList.add('dragging');
+    e.preventDefault();
+  });
+  elSplitter.addEventListener('pointermove', e => {
+    if(!d) return;
+    const total = elMain.getBoundingClientRect().width - 5;
+    let w = d.w + (e.clientX - d.x);
+    w = Math.max(300, Math.min(w, total - 340));   // 两边都留出可用宽度
+    lw = Math.round(w);
+    elMain.style.setProperty('--lw', lw + 'px');
+  });
+  function end(){
+    if(!d) return;
+    d = null;
+    elSplitter.classList.remove('on');
+    document.body.classList.remove('dragging');
+    save();
+    fit();
+  }
+  elSplitter.addEventListener('pointerup', end);
+  elSplitter.addEventListener('pointercancel', end);
+  elSplitter.addEventListener('dblclick', () => {
+    lw = null;
+    elMain.style.removeProperty('--lw');
+    save(); fit();
+  });
+})();
+
+/* ---------- 同步滚动：按进度百分比映射 ---------- */
+let scrollLock = 0;
+function syncScroll(e){
+  if(!syncOn || layout !== 'both') return;
+  const src = e.target;
+  const other = src === elSrc ? scroller() : (src === scroller() ? elSrc : null);
+  if(!other) return;
+  if(Date.now() < scrollLock) return;          // 防止两边互相写死
+  const a = src.scrollTop, am = src.scrollHeight - src.clientHeight;
+  const bm = other.scrollHeight - other.clientHeight;
+  if(am <= 0 || bm <= 0) return;
+  scrollLock = Date.now() + 90;
+  other.scrollTop = Math.round((a / am) * bm);
+}
+elSrc.addEventListener('scroll', syncScroll, { passive:true });
+elScreen.addEventListener('scroll', syncScroll, { passive:true });
+elPcScreen.addEventListener('scroll', syncScroll, { passive:true });
+
+function setSync(on){
+  syncOn = on;
+  elSyncBtn.classList.toggle('on', syncOn);
+  elSyncBtn.title = syncOn ? '同步滚动：开（点击关闭）' : '同步滚动：关（点击开启）';
+  save();
+}
+elSyncBtn.onclick = () => setSync(!syncOn);
+
+/* ---------- 回到顶部：滚动超过一屏才浮出来 ---------- */
+function updateFab(){
+  elFab.classList.toggle('show', scroller().scrollTop > 320);
+}
+[elSrc, elScreen, elPcScreen].forEach(el =>
+  el.addEventListener('scroll', updateFab, { passive:true }));
+
+/* ---------- 渲染 ---------- */
+let timer = null;
+function render(){
+  const md = elSrc.value;
+  const keepTop = scroller().scrollTop;   // 重排后别把读者甩回顶部
+  save();
+  if(!md.trim()){
+    elOut.innerHTML = '<section style="padding:70px 28px;text-align:center;color:#b6bcc6;font-size:13px;line-height:2;">在左边粘贴文章<br>这里就是排好版的样子</section>';
+    scroller().scrollTop = 0;
+    stats(0,0,0,0,0,'');
+    updateFab();
+    return;
+  }
+  elOut.innerHTML = build(md, cur);
+  scroller().scrollTop = keepTop;
+  check();
+}
+
+function toTop(){ scroller().scrollTo({ top:0, behavior:'smooth' }); }
+
+/* 自检：半角标点 + 字数统计 */
+function check(){
+  const html = elOut.innerHTML;
+
+  // 半角标点：只查中文后面紧跟 , ; ! ?
+  const txt = (html.replace(/<[^>]+>/g,'\u0000'));
+  const bad = txt.match(/[\u4e00-\u9fa5][,;!?]/g) || [];
+  const warn = bad.length
+    ? `<span class="warn">⚠ ${bad.length} 处中文后半角标点</span>`
+    : `<span style="color:var(--main2)">✓ 标点检查通过</span>`;
+
+  const c = countChars(elOut.innerText || '');
+  const chapN = parse(elSrc.value).filter(b => b.t === 'h' && b.level === 2).length;
+
+  stats(c.total, c.han, c.en, c.punc, chapN, warn);
+}
+
+/* 字数：汉字 + 英文词 + 标点，总计取三者之和（英文按词算，不按字母） */
+function countChars(t){
+  const han  = (t.match(/[\u3400-\u4dbf\u4e00-\u9fff]/g) || []).length;
+  const en   = (t.match(/[A-Za-z]+(?:['’-][A-Za-z]+)*/g) || []).length;
+  const punc = (t.match(/[!-\/:-@\[-`{-~]/g) || []).length                                  // 半角
+             + (t.match(/[\u3000-\u303f]/g) || []).length                                   // 中文标点
+             + (t.match(/[\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65]/g) || []).length // 全角
+             + (t.match(/[\u2018\u2019\u201c\u201d\u2013\u2014\u2026\u00b7]/g) || []).length;     // 引号破折号
+  return { han, en, punc, total: han + en + punc };
+}
+
+function stats(total, han, en, punc, chap, warn){
+  document.getElementById('s-words').textContent = total;
+  document.getElementById('s-han').textContent = han;
+  document.getElementById('s-en').textContent = en;
+  document.getElementById('s-punc').textContent = punc;
+  document.getElementById('s-chap').textContent = chap;
+  document.getElementById('s-warn').innerHTML = warn;
+}
+
+/* ============================================================
+   8. 弹窗（自绘，替代 alert / confirm，不引第三方）
+   ============================================================ */
+const elModal  = document.getElementById('modal');
+const elMTitle = document.getElementById('mTitle');
+const elMBody  = document.getElementById('mBody');
+const elMFoot  = document.getElementById('mFoot');
+let modalResolve = null;
+
+function modal({ title, body, actions }){
+  elMTitle.textContent = title || '';
+  elMBody.innerHTML = body || '';
+  elMFoot.innerHTML = '';
+  const acts = (actions && actions.length) ? actions : [{ text:'知道了', kind:'primary', value:true }];
+  acts.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'm-' + (a.kind || 'ghost');
+    b.textContent = a.text;
+    b.onclick = () => closeModal(a.value);
+    elMFoot.appendChild(b);
+  });
+  elModal.classList.add('show');
+  elModal.setAttribute('aria-hidden', 'false');
+  return new Promise(res => { modalResolve = res; });
+}
+function closeModal(v){
+  if(!elModal.classList.contains('show')) return;
+  elModal.classList.remove('show');
+  elModal.setAttribute('aria-hidden', 'true');
+  const r = modalResolve;
+  modalResolve = null;
+  if(r) r(v);
+}
+elModal.addEventListener('click', e => { if(e.target.dataset.close) closeModal(false); });
+if(document.addEventListener){
+  document.addEventListener('keydown', e => {
+    if(!elModal.classList.contains('show')) return;
+    if(e.key === 'Escape'){ e.preventDefault(); closeModal(false); }
+    if(e.key === 'Enter'){
+      const b = elMFoot.querySelector('.m-primary') || elMFoot.querySelector('.m-danger');
+      if(b && b.click) b.click();
+    }
+  });
+}
+
+/* 微信号写在弹窗里，点一下就能复制 */
+const WX_ID = 'xinmin-yang';
+const CREDIT_URL = 'https://github.com/isjiamu/gzh-design-skill';
+function showHelp(){
+  modal({
+    title: '公众号文章排版器',
+    body: `<p style="margin:0 0 8px;">单文件、纯前端，不联网也不上传，文章只留在你自己的浏览器里。</p>
+<p style="margin:0 0 4px;color:var(--text);font-weight:600;">致谢原作者</p>
+<p style="margin:0 0 6px;">六套主题的排版规则、组件结构（章节标题、胶囊列表、票据卡、代码块、结尾卡）都来自这个开源技能，这个编辑器只是把它的规则做成了不用跑 AI 的粘贴即排版工具：</p>
+<p style="margin:0 0 10px;"><a href="${CREDIT_URL}" target="_blank" rel="noopener noreferrer">${CREDIT_URL.replace('https://', '')}</a></p>
+<p style="margin:0;">用着有问题、想要新主题，或者想聊排版，加我微信：</p>
+<span class="wxid">${WX_ID}<button id="wxCopy" style="margin-left:4px;padding:3px 9px;font-size:11px;font-weight:600;background:none;border:1px solid var(--line);border-radius:6px;color:var(--dim);cursor:pointer;font-family:inherit;" onclick="copyWx(this)">复制</button></span>`,
+    actions: [{ text:'关闭', kind:'primary', value:true }]
+  });
+}
+function copyWx(btn){
+  const done = () => {
+    const old = btn.textContent;
+    btn.textContent = '已复制';
+    setTimeout(() => { btn.textContent = old; }, 1600);
+  };
+  const fallback = () => {
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = WX_ID;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      done();
+    }catch(e){}
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(WX_ID).then(done).catch(fallback);
+  } else fallback();
+}
+
+/* ============================================================
+   9. 下载：导出成独立 HTML 文件（归档 / 备份）
+   ============================================================ */
+function articleTitle(){
+  const m = elSrc.value.match(/^\s*#\s+(.+)$/m);
+  return ((m ? m[1] : '公众号文章').trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '-')) || '公众号文章';
+}
+/* 文件名统一「公众号文章-年月日-时分秒」，同一篇导多次也不会互相覆盖 */
+function fileStamp(d){
+  d = d || new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+function downloadHtml(){
+  if(!elSrc.value.trim()){
+    modal({ title:'还没有内容', body:'先在左边粘贴文章，再来下载。', actions:[{ text:'知道了', kind:'primary' }] });
+    return;
+  }
+  const title = articleTitle();
+  const safeTitle = title.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const doc = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${safeTitle}</title>
+<style>
+  body{margin:0;background:#f4f5f7;}
+  .wrap{max-width:677px;margin:0 auto;background:#fff;padding:32px 0 48px;}
+  img{max-width:100%;height:auto;}
+</style>
+</head>
+<body>
+<div class="wrap">
+${elOut.innerHTML}
+</div>
+</body>
+</html>`;
+  const blob = new Blob([doc], { type:'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '公众号文章-' + fileStamp() + '.html';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/* 复制：优先 ClipboardItem 双 MIME，失败退回 execCommand */
+async function copyRich(){
+  const btn = document.getElementById('copyBtn');
+  const old = btn.textContent;
+  try{
+    const html = elOut.innerHTML;
+    const text = elOut.innerText;
+    if(navigator.clipboard && window.ClipboardItem){
+      const item = new ClipboardItem({
+        'text/html': new Blob([html], {type:'text/html'}),
+        'text/plain': new Blob([text], {type:'text/plain'})
+      });
+      await navigator.clipboard.write([item]);
+      ok();
+      return;
+    }
+    throw new Error('no clipboard api');
+  }catch(e){
+    // 兜底：选中预览区复制
+    try{
+      const r = document.createRange();
+      r.selectNodeContents(elOut);
+      const s = getSelection();
+      s.removeAllRanges(); s.addRange(r);
+      const okk = document.execCommand('copy');
+      s.removeAllRanges();
+      if(okk){ ok(); return; }
+      throw new Error('execCommand failed');
+    }catch(e2){
+      modal({
+        title: '复制没有成功',
+        body: '可以手动在预览区全选（⌘A）后按 ⌘C。',
+        actions: [{ text:'好', kind:'primary', value:true }]
+      });
+    }
+  }
+  function ok(){
+    btn.textContent = '✓ 已复制，去公众号 ⌘V';
+    btn.classList.add('done');
+    setTimeout(()=>{ btn.textContent = old; btn.classList.remove('done'); }, 2200);
+  }
+}
+
+function clearAll(){
+  modal({
+    title: '清空当前内容？',
+    body: '左边编辑框里的文字会被清掉。清空后刷新页面，会自动装回一份排版示例。',
+    actions: [
+      { text:'取消', kind:'ghost', value:false },
+      { text:'清空', kind:'danger', value:true }
+    ]
+  }).then(ok => { if(ok){ elSrc.value = ''; render(); } });
+}
+
+function importFile(inp){
+  const f = inp.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => { elSrc.value = r.result; render(); };
+  r.readAsText(f, 'utf-8');
+  inp.value = '';
+}
+
+elSrc.addEventListener('input', () => {
+  clearTimeout(timer);
+  timer = setTimeout(render, 120);
+});
+
+/* 示例文章：没有缓存、编辑框也空着时自动装进来，所以界面上不再需要「载入示例」按钮。
+   内容刻意把九种语法各写一遍（标题/小节/行内四种标记/行内代码/引用/两种列表/代码块/图片/分割线），
+   一进来就能看到全部效果。 */
+const DEMO = `# 这是一份排版样例
+
+标题用 # 开头，只用来记录文章名，正文里不会重复出现。下面直接开始正文。
+
+## 一、段落与强调
+
+普通段落长这样。字号、行距、两端对齐都已经调好，你只管写，剩下的交给排版器。
+
+这一段塞了四种行内标记：**加粗**用来强调结论，==高亮==用来标注重点，++下划线++适合补充说明，~~删除线~~表示这条已经作废。
+
+行内代码写作 \`npm run dev\`，混在正文里也不会打断阅读节奏。
+
+### 小节标题长这样
+
+三级标题比二级小一号，用来切分章节内部的小节。
+
+## 二、引用、列表与代码块
+
+> 引用块用来放别人的话，或者放你希望读者单独读一遍的那一句。
+
+无序列表：
+
+- **标签加粗**：列表项支持「**标签**：说明」的写法，会自动拆成标签和解释两段。
+- ==纯说明的列表项==：没有标签时，就只显示正文。
+- 第三项故意写长一点，用来检查长段落里的排版是否稳定，比如中文会不会被撑出很大的字间距。
+
+有序列表：
+
+1. 第一步：把文章粘进左边的输入框。
+2. 第二步：在顶部挑一个顺眼的主题。
+3. 第三步：点右下角「复制到公众号」，去编辑器里粘贴。
+
+## 三、代码、图片与分割线
+
+\`\`\`javascript
+function hello(name){
+  return '你好，' + name;
+}
+\`\`\`
+
+下面是一张示例图片：
+
+![示例图片：用来检查图片边距与说明文字](https://picsum.photos/seed/gzh/677/380)
+
+---
+
+分割线以上的语法都摆在这里了，删掉换成你自己的内容就可以开始。`;
+
+function loadDemo(){ elSrc.value = DEMO; render(); }
+
+/* ---------- 启动 ---------- */
+load();
+buildThemeButtons();
+buildUiButtons();
+buildLayoutButtons();
+setUi(uiMode);
+document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+applyLayout();
+applyMode();
+setSync(syncOn);
+if(!elSrc.value.trim()) elSrc.value = DEMO;   // 没缓存也没内容 → 自动给一份示例
+render();
+updateFab();
+
+</script>
+</body>
+</html>

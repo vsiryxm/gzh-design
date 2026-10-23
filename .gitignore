@@ -1,0 +1,14 @@
+# 系统
+.DS_Store
+Thumbs.db
+
+# 测试产物（npm test 生成，随时可重建）
+out/
+
+# 依赖（本项目零依赖，仅防误装）
+node_modules/
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
