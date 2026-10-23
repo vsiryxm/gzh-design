@@ -62,7 +62,8 @@ global.document = {
   execCommand: () => true,
   getSelection: () => ({ removeAllRanges(){}, addRange(){} })
 };
-global.window = { addEventListener(){}, innerWidth: 1500 };
+global.window = { addEventListener(){}, innerWidth: 1500, __mq: false,
+  matchMedia(){ return { matches: !!this.__mq }; } };
 global.requestAnimationFrame = f => f();
 global.getComputedStyle = () => ({
   paddingLeft: '22px', paddingRight: '22px',
@@ -84,12 +85,13 @@ global.Blob = function(){};
 eval(js + `\n;Object.assign(global, {
   THEMES, build, parse, render, pick, load, loadDemo,
   elSrc, elOut, elScreen, elPcScreen, elStage, elMain,
-  setLayout, applyLayout, setMode, applyMode, setSync, fit, setUi,
+  setLayout, applyLayout, setMode, applyMode, setSync, fit, setUi, setMTab, isMobile,
   DEMO, ending, endingIcons, countChars, articleTitle, WX_ID,
   fileStamp, CREDIT_URL,
   cur: () => cur,
   setCur: v => { cur = v; },
   ui: () => uiMode,
+  mtab: () => mTab,
   view: () => ({ layout, vmode, syncOn, lw, uiMode })
 });`);
 
@@ -290,6 +292,21 @@ setUi('dark');
 const uDark = document.documentElement.getAttribute('data-ui') === 'dark' && ui() === 'dark';
 console.log(`  浅色 ${uLight ? '✓' : '✗'} · 写缓存 ${uSaved ? '✓' : '✗'} · 切回深色 ${uDark ? '✓' : '✗'} · 浅色变量块 ${uCss ? '✓' : '✗'}`);
 console.log(uLight && uSaved && uDark && uCss ? '✓ 深色/浅色可切换且记住' : '✗ 界面配色异常');
+
+/* ---------------- 移动端：一次只看一栏 ---------------- */
+console.log('\n=== 移动端 ===');
+window.__mq = true;                       // 模拟 820px 以下
+setMTab('edit');
+const mb1 = elMain.classList.contains('m-edit') && !elMain.classList.contains('only-left');
+setMTab('preview');
+const mb2 = elMain.classList.contains('m-preview') && !elMain.classList.contains('only-right');
+const mbSaved = (JSON.parse(localStorage.getItem('gzh-paiban-v2')) || {}).mtab === 'preview';
+window.__mq = false;                      // 回到桌面宽度
+applyLayout();
+const mb3 = !elMain.classList.contains('m-edit') && !elMain.classList.contains('m-preview');
+const mbCss = /class="mtabs"/.test(html) && /@media\(max-width:640px\)/.test(html) && /font-size:16px/.test(html);
+console.log(`  编辑tab ${mb1 ? '✓' : '✗'} · 预览tab ${mb2 ? '✓' : '✗'} · 写缓存 ${mbSaved ? '✓' : '✗'} · 回桌面清类 ${mb3 ? '✓' : '✗'} · 结构与手机壳规则 ${mbCss ? '✓' : '✗'}`);
+console.log(mb1 && mb2 && mbSaved && mb3 && mbCss ? '✓ 移动端单栏切换正常' : '✗ 移动端布局异常');
 
 /* ---------------- 许可合规：AGPL 衍生作品不能漏声明 ---------------- */
 console.log('\n=== 许可合规 ===');

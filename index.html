@@ -14,7 +14,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>公众号文章排版器 · Markdown → 微信 HTML</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -24,6 +24,9 @@
     --main:#059669; --main2:#34d399; --danger:#f87171; --warn:#fbbf24;
   }
   html,body{height:100%}
+  /* iOS Safari 的地址栏会让 100% 比可见区域高，底部工具栏被顶出屏幕；
+     支持 dvh 的地方改用动态视口高度，键盘弹出时也能跟着收。 */
+  @supports (height:100dvh){ html,body{height:100dvh} }
   body{
     background:var(--bg); color:var(--text);
     font:14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
@@ -203,6 +206,7 @@
   }
   footer .stat{white-space:nowrap}
   footer .stat b{color:var(--dim);font-weight:600}
+  footer .fstats{display:flex; align-items:center; gap:14px; min-width:0}
   footer .grow{flex:1}
   .btn-copy{
     background:var(--main); color:#fff; border:0; padding:9px 22px;
@@ -318,24 +322,73 @@
   .m-danger{background:#7f1d1d; color:#fee2e2}
   .m-danger:hover{background:#991b1b}
 
-  /* 窄屏：上下堆叠，不显示拖动条 */
+  /* ============================================================
+     窄屏 / 手机：一次只显示一栏，用顶部「编辑 / 预览」切换
+     手机屏放不下真机外壳，那就别套壳——预览直接满宽渲染。
+     ============================================================ */
+  .mtabs{display:none}
+
   @media(max-width:820px){
+    /* 栏位切换在移动端没有意义，用 tab 取代 */
+    #layoutSeg{display:none}
     main{display:flex; flex-direction:column}
     .splitter{display:none}
-    .pane.left{flex:0 0 38%; border-bottom:1px solid var(--line)}
-    .pane.right{flex:1 1 auto}
-    main.only-left .pane.left,
-    main.only-right .pane.right{flex:1 1 auto}
-    header{flex-wrap:wrap; gap:10px}
-    header h1{width:100%}
-    header .seg{margin-left:6px}
-    .stage{padding:0 12px}
-    /* 窄屏底部：统计和按钮各占一行，否则页脚撑出视口、整页横向被裁 */
-    footer{flex-wrap:wrap; gap:6px 12px; padding:8px 14px}
+    .pane{flex:1 1 auto; min-height:0}
+    main.m-edit .pane.left{display:flex}
+    main.m-edit .pane.right{display:none}
+    main.m-preview .pane.left{display:none}
+    main.m-preview .pane.right{display:flex}
+
+    .mtabs{
+      display:flex; flex:0 0 auto; gap:6px; padding:8px 12px;
+      background:var(--panel); border-bottom:1px solid var(--line);
+    }
+    .mtabs button{
+      flex:1; min-height:40px; border:1px solid var(--line); border-radius:9px;
+      background:none; color:var(--dim); font-family:inherit; font-size:13px;
+      font-weight:600; cursor:pointer; display:inline-flex; align-items:center;
+      justify-content:center; gap:6px; touch-action:manipulation;
+    }
+    .mtabs button.on{background:var(--main); border-color:var(--main); color:#fff}
+    .mtabs button svg{width:15px; height:15px}
+
+    /* 顶栏折两行：第一行标题 + 配色 + 帮助，第二行整条风格栏横滑 */
+    header{flex-wrap:wrap; gap:8px 6px; padding:9px 12px}
+    header h1{flex:1 1 auto; min-width:0; font-size:13px; overflow:hidden; text-overflow:ellipsis}
+    header h1 span{display:none}
+    .themes{
+      order:3; flex:1 0 100%; flex-wrap:nowrap;
+      overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+      margin:0 -12px; padding:1px 12px 3px;
+      -webkit-mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 24px),transparent 100%);
+      mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 24px),transparent 100%);
+    }
+    .themes::-webkit-scrollbar{display:none}
+    .themes button{flex:0 0 auto; min-height:32px; padding:6px 10px}
+    .themes-lead{position:sticky; left:0; background:var(--panel); padding-right:8px}
+
+    .stage{padding:0 10px}
+    footer{flex-wrap:wrap; gap:6px 12px; padding:8px 14px calc(8px + env(safe-area-inset-bottom))}
     footer .stat{font-size:10.5px}
+    footer .fstats{overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch}
+    footer .fstats::-webkit-scrollbar{display:none}
     footer .grow{display:none}
-    .btn-dl,.btn-copy{flex:1 1 40%; justify-content:center}
-    .fab{right:14px; bottom:14px}
+    .btn-dl,.btn-copy{flex:1 1 40%; justify-content:center; min-height:44px}
+    .fab{right:14px; bottom:16px}
+    /* 小于 16px 时 iOS 聚焦会自动放大整页，正文输入必须给到 16 */
+    textarea{font-size:16px; padding:14px 16px}
+  }
+
+  @media(max-width:640px){
+    /* 真机上再套一个手机壳没有意义：去掉外壳，预览就是真实渲染效果 */
+    .device{
+      width:100%; height:100%; border-radius:0; box-shadow:none; zoom:1;
+    }
+    .island, .home-bar, .key{display:none}
+    .screen{border-radius:0; padding:12px 0 20px}
+    .stage{padding:0}
+    main.mode-pc .stage{padding:0}
+    main.mode-pc .pccard{box-shadow:none}
   }
 
   /* ============================================================
@@ -386,6 +439,18 @@ try{
 </header>
 
 <main id="main">
+  <!-- 移动端专用：一次只看一栏 -->
+  <div class="mtabs" id="mTabs">
+    <button data-m="edit" title="编辑正文">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.2 2.6 13.4 4.8 5.9 12.3l-3 .8.8-3z"/></svg>
+      编辑
+    </button>
+    <button data-m="preview" title="查看排版效果">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1.6 8S3.9 3.9 8 3.9 14.4 8 14.4 8 12.1 12.1 8 12.1 1.6 8 1.6 8Z"/><circle cx="8" cy="8" r="1.9"/></svg>
+      预览
+    </button>
+  </div>
+
   <section class="pane left">
     <div class="pane-head">
       <span>Markdown</span>
@@ -453,12 +518,14 @@ try{
 </main>
 
 <footer>
-  <span class="stat">总计 <b id="s-words">0</b> 字</span>
-  <span class="stat">汉字 <b id="s-han">0</b></span>
-  <span class="stat">英文 <b id="s-en">0</b></span>
-  <span class="stat">标点 <b id="s-punc">0</b></span>
-  <span class="stat">章节 <b id="s-chap">0</b></span>
-  <span class="stat" id="s-warn"></span>
+  <div class="fstats">
+    <span class="stat">总计 <b id="s-words">0</b> 字</span>
+    <span class="stat">汉字 <b id="s-han">0</b></span>
+    <span class="stat">英文 <b id="s-en">0</b></span>
+    <span class="stat">标点 <b id="s-punc">0</b></span>
+    <span class="stat">章节 <b id="s-chap">0</b></span>
+    <span class="stat" id="s-warn"></span>
+  </div>
   <span class="grow"></span>
   <button class="btn-dl" id="dlBtn" onclick="downloadHtml()" title="下载排版后的 HTML 文件">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v7.4"/><path d="M4.8 7 8 10.2 11.2 7"/><path d="M2.8 12.6h10.4"/></svg>
@@ -1040,11 +1107,19 @@ const elSyncBtn = document.getElementById('syncBtn');
 const elFab = document.getElementById('fab');
 
 /* 视图状态：栏位布局 / 预览模式 / 同步滚动 / 左栏宽度 / 界面配色 */
-let layout = 'both';   // both | left | right
+let layout = 'both';   // both | left | right   桌面端
+let mTab   = 'edit';   // edit | preview        移动端（一次只看一栏）
 let vmode  = 'phone';  // phone | pc
 let syncOn = true;
 let lw = null;         // 左栏 px，null = 等分
 let uiMode = 'dark';   // dark | light  只影响本工具界面，不影响导出的公众号 HTML
+
+/* 移动端判定：820px 以下算窄屏。用 matchMedia 而非 innerWidth，方便测试里 stub。 */
+function isMobile(){
+  const q = '(max-width:820px)';
+  if(window.matchMedia) return window.matchMedia(q).matches;
+  return window.innerWidth <= 820;
+}
 
 /* ---------- 本地缓存 ---------- */
 const STORE = 'gzh-paiban-v2';
@@ -1053,7 +1128,7 @@ const OLD = 'gzh-paiban-v1';   // 旧版只有正文和主题，读一次迁移�
 function save(){
   try{
     localStorage.setItem(STORE, JSON.stringify({
-      md: elSrc.value, theme: cur, layout, vmode, sync: syncOn, lw, ui: uiMode
+      md: elSrc.value, theme: cur, layout, vmode, sync: syncOn, lw, ui: uiMode, mtab: mTab
     }));
   }catch(e){}
 }
@@ -1069,6 +1144,7 @@ function load(){
   if(d.sync === false) syncOn = false;
   if(typeof d.lw === 'number' && d.lw > 0) lw = d.lw;
   if(d.ui === 'light' || d.ui === 'dark') uiMode = d.ui;
+  if(d.mtab === 'edit' || d.mtab === 'preview') mTab = d.mtab;
 }
 
 function buildThemeButtons(){
@@ -1124,13 +1200,25 @@ function buildLayoutButtons(){
 }
 function setLayout(k){ layout = k; applyLayout(); save(); }
 function applyLayout(){
-  elMain.classList.toggle('only-left', layout === 'left');
-  elMain.classList.toggle('only-right', layout === 'right');
+  const mob = isMobile();
+  // 移动端和桌面端的栏位是两套状态，各自记住，互不覆盖
+  elMain.classList.toggle('only-left',  !mob && layout === 'left');
+  elMain.classList.toggle('only-right', !mob && layout === 'right');
+  elMain.classList.toggle('m-edit',    mob && mTab === 'edit');
+  elMain.classList.toggle('m-preview', mob && mTab === 'preview');
   document.querySelectorAll('#layoutSeg button').forEach(b =>
     b.classList.toggle('on', b.dataset.layout === layout));
-  if(lw && layout === 'both') elMain.style.setProperty('--lw', lw + 'px');
+  document.querySelectorAll('#mTabs button').forEach(b =>
+    b.classList.toggle('on', b.dataset.m === mTab));
+  if(lw && layout === 'both' && !mob) elMain.style.setProperty('--lw', lw + 'px');
   else elMain.style.removeProperty('--lw');
   requestAnimationFrame(fit);
+}
+/* 移动端切 tab：默认先进编辑，改完再看效果 */
+function setMTab(m){
+  mTab = (m === 'preview') ? 'preview' : 'edit';
+  applyLayout();
+  save();
 }
 
 /* ---------- 预览模式：手机 / PC ---------- */
@@ -1568,12 +1656,20 @@ buildUiButtons();
 buildLayoutButtons();
 setUi(uiMode);
 document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+document.querySelectorAll('#mTabs button').forEach(b => b.onclick = () => setMTab(b.dataset.m));
 applyLayout();
 applyMode();
 setSync(syncOn);
 if(!elSrc.value.trim()) elSrc.value = DEMO;   // 没缓存也没内容 → 自动给一份示例
 render();
 updateFab();
+
+/* 跨过 820px 断点时补一次布局切换（手机横竖屏、平板分屏都会触发） */
+let mobNow = isMobile();
+window.addEventListener('resize', () => {
+  const m = isMobile();
+  if(m !== mobNow){ mobNow = m; applyLayout(); }
+});
 
 </script>
 </body>

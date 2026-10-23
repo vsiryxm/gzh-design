@@ -12,3 +12,7 @@ node_modules/
 .vscode/
 .idea/
 *.swp
+
+# 部署/构建产物
+dist/
+.wrangler/
