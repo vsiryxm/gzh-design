@@ -297,10 +297,13 @@ const root = path.join(__dirname, '..');
 const licTxt = fs.readFileSync(path.join(root, 'LICENSE'), 'utf8');
 const noticeTxt = fs.readFileSync(path.join(root, 'NOTICE'), 'utf8');
 const pkgJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-const okLic = /GNU AFFERO GENERAL PUBLIC LICENSE/.test(licTxt) && /Jiamu/.test(licTxt) && /Simon Yang/.test(licTxt);
-const okNotice = /衍生作品/.test(noticeTxt) && /isjiamu\/gzh-design-skill/.test(noticeTxt);
+// LICENSE 只放未经改动的 AGPL 原文（便于 GitHub 识别），版权与衍生说明集中在 NOTICE
+const okLic = /GNU AFFERO GENERAL PUBLIC LICENSE/.test(licTxt) && /Version 3, 19 November 2007/.test(licTxt);
+const okNotice = /衍生作品/.test(noticeTxt) && /isjiamu\/gzh-design-skill/.test(noticeTxt)
+              && /Jiamu/.test(noticeTxt) && /Simon Yang/.test(noticeTxt);
 const okPkg = pkgJson.license === 'AGPL-3.0-or-later';
-const okPage = /项目源码/.test(html) && /AGPL-3\.0-or-later/.test(html);
+// §5 的「保留版权声明」也要落在源码里
+const okPage = /项目源码/.test(html) && /AGPL-3\.0-or-later/.test(html) && /Jiamu/.test(html);
 console.log(`  LICENSE ${okLic ? '✓' : '✗'} · NOTICE ${okNotice ? '✓' : '✗'} · package.json ${okPkg ? '✓' : '✗'} · 页面源码入口 ${okPage ? '✓' : '✗'}`);
 console.log(okLic && okNotice && okPkg && okPage ? '✓ AGPL 声明齐全（含上游版权与源码入口）' : '✗ 许可声明不完整');
 

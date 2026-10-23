@@ -134,8 +134,8 @@ npm start            # 等价于 python3 -m http.server 5173 --bind 127.0.0.1
 ```
 gzh-design/
 ├── index.html          # 全部代码：解析 / 渲染 / 界面 / 复制 / 下载
-├── LICENSE             # AGPL-3.0（含上游版权声明与修改说明）
-├── NOTICE              # 衍生作品声明：哪些沿用上游、哪些是本项目重写
+├── LICENSE             # GNU AGPL v3.0 原文（未经改动，便于工具识别）
+├── NOTICE              # 衍生作品声明：版权、哪些沿用上游、哪些是本项目重写
 ├── examples/
 │   ├── sample.md       # 一篇真实文章，看密度用
 │   └── fixture.md      # 覆盖全部语法的测试样本
