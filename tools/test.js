@@ -15,7 +15,10 @@ function mkEl(id){
     scrollTop: 0, scrollHeight: 2000, clientWidth: 1200, clientHeight: 800,
     parentElement: null, children: [],
     _ev: {},
+    _a: {},
     dataset: {},
+    setAttribute(k, v){ this._a[k] = String(v); },
+    getAttribute(k){ return k in this._a ? this._a[k] : null; },
     style: {
       _p: {},
       setProperty(k, v){ this._p[k] = v; },
@@ -288,10 +291,13 @@ setUi('light');
 const uLight = document.documentElement.getAttribute('data-ui') === 'light' && ui() === 'light';
 const uSaved = (JSON.parse(localStorage.getItem('gzh-paiban-v2')) || {}).ui === 'light';
 const uCss = /html\[data-ui="light"\]\s*\{/.test(html);
+// 地址栏配色要跟着界面皮肤走，浅色留深色边很难看
+const uMeta = els.themeColor && els.themeColor.getAttribute('content') === '#ffffff';
 setUi('dark');
 const uDark = document.documentElement.getAttribute('data-ui') === 'dark' && ui() === 'dark';
-console.log(`  浅色 ${uLight ? '✓' : '✗'} · 写缓存 ${uSaved ? '✓' : '✗'} · 切回深色 ${uDark ? '✓' : '✗'} · 浅色变量块 ${uCss ? '✓' : '✗'}`);
-console.log(uLight && uSaved && uDark && uCss ? '✓ 深色/浅色可切换且记住' : '✗ 界面配色异常');
+const uMeta2 = els.themeColor && els.themeColor.getAttribute('content') === '#0f1115';
+console.log(`  浅色 ${uLight ? '✓' : '✗'} · 写缓存 ${uSaved ? '✓' : '✗'} · 切回深色 ${uDark ? '✓' : '✗'} · 浅色变量块 ${uCss ? '✓' : '✗'} · 地址栏配色 ${uMeta && uMeta2 ? '✓' : '✗'}`);
+console.log(uLight && uSaved && uDark && uCss && uMeta && uMeta2 ? '✓ 深色/浅色可切换且记住' : '✗ 界面配色异常');
 
 /* ---------------- 移动端：一次只看一栏 ---------------- */
 console.log('\n=== 移动端 ===');

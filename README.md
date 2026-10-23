@@ -20,7 +20,7 @@ Markdown 贴进去，右边直接看到手机里的样子，点一下复制，�
 npm start        # → http://127.0.0.1:5173
 ```
 
-也可以直接双击 `index.html`（剪贴板 API 在 `file://` 下偶尔被拦，起本地服务器最稳）。
+也可以直接双击 `index.html`（剪贴板 API 在 `file://` 下偶尔被拦，起本地服务器最稳）。同目录的 `favicon.ico` / `favicon.svg` / `apple-touch-icon.png` 只管标签页和主屏图标，单独把 `index.html` 拷走照样能用。
 
 1. 左边贴 Markdown —— 首次打开自带一份覆盖全部语法的示例，直接改或全删重写
 2. 顶部挑风格，右上角可切深色 / 浅色界面
@@ -47,6 +47,7 @@ npm start        # → http://127.0.0.1:5173
 
 ```bash
 npm test        # 结构断言 / 语法覆盖 / 缓存往返 / 布局 / 统计 / 许可声明
+npm run icons   # 改完配色重新生成 favicon.ico / favicon.svg / apple-touch-icon.png
 ```
 
 产品细节（目标、功能、阈值、验收标准、后续规划）都在 [docs/PRD.md](docs/PRD.md)。
