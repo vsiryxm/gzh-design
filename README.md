@@ -4,6 +4,8 @@ Markdown 贴进去，右边直接看到它在手机里的样子，点一下复�
 
 **不用跑 AI，不用联网，不传一个字。**
 
+![公众号文章排版器界面：左侧 Markdown 输入，右侧 iPhone 实时预览](docs/screenshot.png)
+
 ---
 
 ## 项目简介
@@ -137,7 +139,9 @@ gzh-design/
 │   └── fixture.md      # 覆盖全部语法的测试样本
 ├── tools/test.js       # 无浏览器跑的逻辑测试（结构断言 / 缓存 / 布局 / 统计）
 ├── ui/                 # 六套主题的效果参考图（样式对齐用）
-├── docs/PRD.md         # 产品说明：目标、功能、交互、验收标准
+├── docs/
+│   ├── PRD.md          # 产品说明：目标、功能、交互、验收标准
+│   └── screenshot.png  # 界面截图（README 首图）
 └── out/                # npm test 生成的六份主题 HTML（可删，已 gitignore）
 ```
 
