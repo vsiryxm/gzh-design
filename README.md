@@ -23,7 +23,7 @@ Markdown 贴进去，右边直接看到它在手机里的样子，点一下复�
 
 适合：经常发公众号、又不想每次手动调字体行距的人；也适合把一篇 Markdown 快速变成能发的稿子。
 
-> 六套主题的排版规则来自开源技能 [isjiamu/gzh-design-skill](https://github.com/isjiamu/gzh-design-skill)，本项目把它做成了不依赖 AI 的粘贴即排版工具。
+> 六套主题的排版规则来自开源技能 [isjiamu/gzh-design-skill](https://github.com/isjiamu/gzh-design-skill)（AGPL-3.0），本项目是它的衍生作品，同样以 AGPL-3.0-or-later 发布——把「AI 技能」做成了不依赖模型的粘贴即排版工具。
 
 ---
 
@@ -134,6 +134,8 @@ npm start            # 等价于 python3 -m http.server 5173 --bind 127.0.0.1
 ```
 gzh-design/
 ├── index.html          # 全部代码：解析 / 渲染 / 界面 / 复制 / 下载
+├── LICENSE             # AGPL-3.0（含上游版权声明与修改说明）
+├── NOTICE              # 衍生作品声明：哪些沿用上游、哪些是本项目重写
 ├── examples/
 │   ├── sample.md       # 一篇真实文章，看密度用
 │   └── fixture.md      # 覆盖全部语法的测试样本
@@ -174,11 +176,19 @@ python3 ~/.agents/skills/gzh-design/scripts/validate_gzh_html.py out/theme-ticke
 
 ---
 
-## 致谢
+## 致谢与许可
 
-- 排版规则、组件结构与六套主题的样式基准：[isjiamu/gzh-design-skill](https://github.com/isjiamu/gzh-design-skill)
-- 本项目做的是「把 AI 的技能变成确定性的模板」：同输入同输出，快、稳、不花钱。
+本项目是 [isjiamu/gzh-design-skill](https://github.com/isjiamu/gzh-design-skill) 的**衍生作品**：
+
+- **上游**：gzh-design-skill — 微信公众号排版技能，Copyright (C) 2026 甲木 (Jiamu) × 摸鱼小李 (Moyu Xiaoli)，AGPL-3.0-or-later
+- **沿用**：六套主题的视觉规则与配色、章节标题/胶囊列表/票据卡/引用/代码块/结尾卡等组件结构、公众号 HTML 的书写约束
+- **改写**：把「供 AI agent 调用的技能」做成不依赖模型的单文件静态工具——确定性输出，不经模型；并重写了 Markdown 解析、界面层、测试与校验
+
+因此本项目同样以 **GNU AGPL-3.0-or-later** 发布，详见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
+
+> 说明：AGPL 只约束这份工具的代码。你用本工具排出来的文章，版权仍然是你自己的。
 
 ## License
 
-MIT
+[GNU Affero General Public License v3.0 or later](LICENSE)（AGPL-3.0-or-later）
+

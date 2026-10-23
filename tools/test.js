@@ -291,6 +291,19 @@ const uDark = document.documentElement.getAttribute('data-ui') === 'dark' && ui(
 console.log(`  浅色 ${uLight ? '✓' : '✗'} · 写缓存 ${uSaved ? '✓' : '✗'} · 切回深色 ${uDark ? '✓' : '✗'} · 浅色变量块 ${uCss ? '✓' : '✗'}`);
 console.log(uLight && uSaved && uDark && uCss ? '✓ 深色/浅色可切换且记住' : '✗ 界面配色异常');
 
+/* ---------------- 许可合规：AGPL 衍生作品不能漏声明 ---------------- */
+console.log('\n=== 许可合规 ===');
+const root = path.join(__dirname, '..');
+const licTxt = fs.readFileSync(path.join(root, 'LICENSE'), 'utf8');
+const noticeTxt = fs.readFileSync(path.join(root, 'NOTICE'), 'utf8');
+const pkgJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const okLic = /GNU AFFERO GENERAL PUBLIC LICENSE/.test(licTxt) && /Jiamu/.test(licTxt) && /Simon Yang/.test(licTxt);
+const okNotice = /衍生作品/.test(noticeTxt) && /isjiamu\/gzh-design-skill/.test(noticeTxt);
+const okPkg = pkgJson.license === 'AGPL-3.0-or-later';
+const okPage = /项目源码/.test(html) && /AGPL-3\.0-or-later/.test(html);
+console.log(`  LICENSE ${okLic ? '✓' : '✗'} · NOTICE ${okNotice ? '✓' : '✗'} · package.json ${okPkg ? '✓' : '✗'} · 页面源码入口 ${okPage ? '✓' : '✗'}`);
+console.log(okLic && okNotice && okPkg && okPage ? '✓ AGPL 声明齐全（含上游版权与源码入口）' : '✗ 许可声明不完整');
+
 /* ---------------- 同步开关 ---------------- */
 setSync(true);
 const s1 = view().syncOn === true;

@@ -1,4 +1,16 @@
 <!DOCTYPE html>
+<!--
+  gzh-design — 公众号文章排版器
+  Copyright (C) 2026 Simon Yang
+
+  本程序是 gzh-design-skill 的衍生作品
+  （Copyright (C) 2026 甲木 (Jiamu) × 摸鱼小李 (Moyu Xiaoli)，
+    https://github.com/isjiamu/gzh-design-skill ，AGPL-3.0-or-later）。
+
+  依据 GNU Affero General Public License v3.0 or later 发布，
+  完整条款见同目录 LICENSE，衍生关系与改动说明见 NOTICE。
+  本文件即完整源码：可直接保存、修改、再分发。
+-->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -1340,6 +1352,8 @@ if(document.addEventListener){
 /* 微信号写在弹窗里，点一下就能复制 */
 const WX_ID = 'xinmin-yang';
 const CREDIT_URL = 'https://github.com/isjiamu/gzh-design-skill';
+const SRC_URL = 'https://github.com/vsiryxm/gzh-design';
+const LICENSE_URL = SRC_URL + '/blob/main/LICENSE';
 function showHelp(){
   modal({
     title: '公众号文章排版器',
@@ -1347,6 +1361,8 @@ function showHelp(){
 <p style="margin:0 0 4px;color:var(--text);font-weight:600;">致谢原作者</p>
 <p style="margin:0 0 6px;">六套主题的排版规则、组件结构（章节标题、胶囊列表、票据卡、代码块、结尾卡）都来自这个开源技能，这个编辑器只是把它的规则做成了不用跑 AI 的粘贴即排版工具：</p>
 <p style="margin:0 0 10px;"><a href="${CREDIT_URL}" target="_blank" rel="noopener noreferrer">${CREDIT_URL.replace('https://', '')}</a></p>
+<p style="margin:0 0 4px;color:var(--text);font-weight:600;">源码与许可</p>
+<p style="margin:0 0 10px;">本项目是上游的衍生作品，以 <b>AGPL-3.0-or-later</b> 发布：<a href="${SRC_URL}" target="_blank" rel="noopener noreferrer">项目源码</a> · <a href="${LICENSE_URL}" target="_blank" rel="noopener noreferrer">许可证全文</a></p>
 <p style="margin:0;">用着有问题、想要新主题，或者想聊排版，加我微信：</p>
 <span class="wxid">${WX_ID}<button id="wxCopy" style="margin-left:4px;padding:3px 9px;font-size:11px;font-weight:600;background:none;border:1px solid var(--line);border-radius:6px;color:var(--dim);cursor:pointer;font-family:inherit;" onclick="copyWx(this)">复制</button></span>`,
     actions: [{ text:'关闭', kind:'primary', value:true }]
