@@ -1455,7 +1455,9 @@ function showHelp(){
   modal({
     title: '公众号文章排版器',
     body: `<p style="margin:0 0 8px;">单文件、纯前端，不联网也不上传，文章只留在你自己的浏览器里。</p>
-<p style="margin:0 0 4px;color:var(--text);font-weight:600;">致谢原作者</p>
+    <p style="margin:0 0 4px;color:var(--text);font-weight:600;">编辑快捷键</p>
+    <p style="margin:0 0 10px;">Ctrl/⌘ + B 粗体 · I 高亮 · E 行内代码 · Shift + S 删除线 · K 链接；不选中文字时按 X 剪切整行。</p>
+    <p style="margin:0 0 4px;color:var(--text);font-weight:600;">致谢原作者</p>
 <p style="margin:0 0 6px;">六套主题的排版规则、组件结构（章节标题、胶囊列表、票据卡、代码块、结尾卡）都来自这个开源技能，这个编辑器只是把它的规则做成了不用跑 AI 的粘贴即排版工具：</p>
 <p style="margin:0 0 10px;"><a href="${CREDIT_URL}" target="_blank" rel="noopener noreferrer">${CREDIT_URL.replace('https://', '')}</a></p>
 <p style="margin:0 0 4px;color:var(--text);font-weight:600;">源码与许可</p>
@@ -1603,6 +1605,97 @@ function importFile(inp){
 elSrc.addEventListener('input', () => {
   clearTimeout(timer);
   timer = setTimeout(render, 120);
+});
+
+/* ---------- 编辑器快捷键 ----------
+   Ctrl/⌘+B 粗体 · I 高亮 · E 行内代码 · Shift+S 删除线 · K 链接
+   没选中文字时 Ctrl/⌘+X 剪切整行
+   只挂在编辑框上，弹窗和按钮的键盘操作不受影响；
+   中文输入法组字期间一律让路，不然打拼音会被快捷键抢走。 */
+function toggleWrap(before, after){
+  const el = elSrc, v = el.value;
+  const s0 = el.selectionStart, e0 = el.selectionEnd;
+  const sel = v.slice(s0, e0);
+  if(sel.length >= before.length + after.length && sel.startsWith(before) && sel.endsWith(after)){
+    // 选中的内容本身就带着标记 → 把标记去掉
+    const inner = sel.slice(before.length, sel.length - after.length);
+    el.setRangeText(inner, s0, e0, 'end');
+    el.setSelectionRange(s0, s0 + inner.length);
+  } else {
+    const outB = s0 >= before.length && v.slice(s0 - before.length, s0) === before;
+    const outA = v.slice(e0, e0 + after.length) === after;
+    if(outB && outA){
+      // 光标在标记中间 → 连外层标记一起清掉
+      if(sel.length){
+        el.setRangeText(sel, s0 - before.length, e0 + after.length, 'end');
+        el.setSelectionRange(s0 - before.length, s0 - before.length + sel.length);
+      } else {
+        el.setRangeText('', s0 - before.length, e0 + after.length, 'end');
+        el.setSelectionRange(s0 - before.length, s0 - before.length);
+      }
+    } else {
+      el.setRangeText(before + sel + after, s0, e0, 'end');
+      if(sel.length) el.setSelectionRange(s0 + before.length, s0 + before.length + sel.length);
+      else el.setSelectionRange(s0 + before.length, s0 + before.length);
+    }
+  }
+  el.focus();
+  render();          // render() 内部会顺手 save()
+}
+
+function insertLink(){
+  const el = elSrc, v = el.value;
+  const s0 = el.selectionStart, e0 = el.selectionEnd;
+  const sel = v.slice(s0, e0);
+  if(sel.length){
+    el.setRangeText('[' + sel + '](url)', s0, e0, 'end');
+    el.setSelectionRange(s0 + sel.length + 3, s0 + sel.length + 6);   // 选中 url，直接粘贴
+  } else {
+    el.setRangeText('[链接文字](url)', s0, e0, 'end');
+    el.setSelectionRange(s0 + 7, s0 + 10);
+  }
+  el.focus();
+  render();
+}
+
+function cutCurrentLine(){
+  const el = elSrc, v = el.value;
+  const p = el.selectionStart;
+  const ls = v.lastIndexOf('\n', p - 1) + 1;      // 行首
+  let le = v.indexOf('\n', p);
+  le = (le === -1) ? v.length : le + 1;            // 连行尾换行一起带走
+  const text = v.slice(ls, le);
+  el.setSelectionRange(ls, le);
+  el.focus();
+  let cut = false;
+  try{ cut = document.execCommand('cut'); }catch(e){}
+  if(!cut){
+    // 兜底：自己复制 + 自己删
+    try{
+      const cl = navigator.clipboard;
+      if(cl && cl.writeText) cl.writeText(text);
+      else document.execCommand('copy');
+    }catch(e){}
+    el.setRangeText('', ls, le, 'end');
+  }
+  render();
+}
+
+elSrc.addEventListener('keydown', e => {
+  if(e.isComposing || e.keyCode === 229) return;   // 输入法组字中，键盘让给拼音
+  if(!(e.ctrlKey || e.metaKey)) return;
+  const k = (e.key || '').toLowerCase();
+  if(k === 'x' && elSrc.selectionStart === elSrc.selectionEnd){
+    e.preventDefault(); cutCurrentLine(); return;
+  }
+  if(e.shiftKey){
+    if(k === 's'){ e.preventDefault(); toggleWrap('~~','~~'); }
+    return;
+  }
+  if(k === 'b'){ e.preventDefault(); toggleWrap('**','**'); }
+  else if(k === 'i'){ e.preventDefault(); toggleWrap('==','=='); }
+  else if(k === 'e'){ e.preventDefault(); toggleWrap('`','`'); }
+  else if(k === 'k'){ e.preventDefault(); insertLink(); }
 });
 
 /* 示例文章：没有缓存、编辑框也空着时自动装进来，所以界面上不再需要「载入示例」按钮。

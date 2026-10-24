@@ -19,6 +19,19 @@ function mkEl(id){
     dataset: {},
     setAttribute(k, v){ this._a[k] = String(v); },
     getAttribute(k){ return k in this._a ? this._a[k] : null; },
+    // textarea 能力：快捷键要靠选区和 setRangeText 改文本
+    selectionStart: 0, selectionEnd: 0,
+    setSelectionRange(s, e){ this.selectionStart = s; this.selectionEnd = e; },
+    setRangeText(txt, s, e, mode){
+      const a = (s === undefined ? this.selectionStart : s);
+      const b = (e === undefined ? this.selectionEnd : e);
+      this.value = this.value.slice(0, a) + txt + this.value.slice(b);
+      if(mode === 'select'){ this.selectionStart = a; this.selectionEnd = a + txt.length; }
+      else if(mode === 'start'){ this.selectionStart = this.selectionEnd = a; }
+      else { this.selectionStart = this.selectionEnd = a + txt.length; }
+      return txt;
+    },
+    focus(){ global.__active = this; },
     style: {
       _p: {},
       setProperty(k, v){ this._p[k] = v; },
@@ -62,7 +75,14 @@ global.document = {
   querySelectorAll: () => [],
   querySelector: () => mkEl(''),
   createRange: () => ({ selectNodeContents(){} }),
-  execCommand: () => true,
+  execCommand(cmd){
+    // 模拟真实行为：cut 会把选中的内容真删掉（其余命令这里只关心返回值）
+    const el = global.__active;
+    if(cmd === 'cut' && el && el.selectionStart !== el.selectionEnd){
+      el.setRangeText('', el.selectionStart, el.selectionEnd, 'end');
+    }
+    return true;
+  },
   getSelection: () => ({ removeAllRanges(){}, addRange(){} })
 };
 global.window = { addEventListener(){}, innerWidth: 1500, __mq: false,
@@ -89,6 +109,7 @@ eval(js + `\n;Object.assign(global, {
   THEMES, build, parse, render, pick, load, loadDemo,
   elSrc, elOut, elScreen, elPcScreen, elStage, elMain,
   setLayout, applyLayout, setMode, applyMode, setSync, fit, setUi, setMTab, isMobile,
+  toggleWrap, insertLink, cutCurrentLine,
   DEMO, ending, endingIcons, countChars, articleTitle, WX_ID,
   fileStamp, CREDIT_URL,
   cur: () => cur,
@@ -313,6 +334,62 @@ const mb3 = !elMain.classList.contains('m-edit') && !elMain.classList.contains('
 const mbCss = /class="mtabs"/.test(html) && /@media\(max-width:640px\)/.test(html) && /font-size:16px/.test(html);
 console.log(`  编辑tab ${mb1 ? '✓' : '✗'} · 预览tab ${mb2 ? '✓' : '✗'} · 写缓存 ${mbSaved ? '✓' : '✗'} · 回桌面清类 ${mb3 ? '✓' : '✗'} · 结构与手机壳规则 ${mbCss ? '✓' : '✗'}`);
 console.log(mb1 && mb2 && mbSaved && mb3 && mbCss ? '✓ 移动端单栏切换正常' : '✗ 移动端布局异常');
+
+/* ---------------- 快捷键：行内标记 + 剪切整行 ---------------- */
+console.log('\n=== 快捷键 ===');
+function press(k, opt){
+  const e = Object.assign({
+    key: k, ctrlKey: false, metaKey: false, shiftKey: false,
+    isComposing: false, keyCode: 0, defaultPrevented: false,
+    preventDefault(){ this.defaultPrevented = true; }
+  }, opt || {});
+  elSrc._ev.keydown(e);
+  return e;
+}
+function setText(v, s, e){
+  elSrc.value = v;
+  elSrc.selectionStart = s;
+  elSrc.selectionEnd = (e === undefined ? s : e);
+}
+
+setText('hello world', 0, 5);
+press('b', { ctrlKey: true });
+const kb1 = elSrc.value === '**hello** world' && elSrc.selectionStart === 2 && elSrc.selectionEnd === 7;
+press('b', { ctrlKey: true });                       // 再按一次去标记
+const kb2 = elSrc.value === 'hello world';
+
+setText('abc', 1, 1);
+press('b', { metaKey: true });                       // Mac 用 ⌘
+const kb3 = elSrc.value === 'a****bc' && elSrc.selectionStart === 3;
+
+setText('hi', 0, 2); press('i', { ctrlKey: true });
+const kh = elSrc.value === '==hi==';
+setText('hi', 0, 2); press('e', { ctrlKey: true });
+const ke = elSrc.value === '`hi`';
+setText('hi', 0, 2); press('s', { ctrlKey: true, shiftKey: true });
+const ks = elSrc.value === '~~hi~~';
+
+setText('官网', 0, 2); press('k', { ctrlKey: true });
+const kk = elSrc.value === '[官网](url)' && elSrc.selectionStart === 5 && elSrc.selectionEnd === 8;
+
+setText('第一行\n第二行\n第三行', 0, 0);
+press('x', { ctrlKey: true });                       // 光标在第一行
+const kx1 = elSrc.value === '第二行\n第三行';
+setText('第一行\n第二行\n第三行', 5, 5);
+press('x', { ctrlKey: true });                       // 光标在第二行
+const kx2 = elSrc.value === '第一行\n第三行';
+
+setText('abc', 0, 3);
+const kx3 = press('x', { ctrlKey: true });            // 选了字就不接管，交给原生剪切
+const kx4 = kx3.defaultPrevented === false && elSrc.value === 'abc';
+
+setText('abc', 0, 3);
+press('b', { ctrlKey: true, isComposing: true });    // 输入法组字中让路
+const kime = elSrc.value === 'abc';
+
+console.log(`  粗体 ${kb1 ? '✓' : '✗'} · 去标记 ${kb2 ? '✓' : '✗'} · ⌘键与空选区 ${kb3 ? '✓' : '✗'} · 高亮 ${kh ? '✓' : '✗'} · 行内代码 ${ke ? '✓' : '✗'} · 删除线 ${ks ? '✓' : '✗'} · 链接 ${kk ? '✓' : '✗'} · 剪切整行 ${kx1 && kx2 ? '✓' : '✗'} · 有选区不抢 ${kx4 ? '✓' : '✗'} · 输入法让路 ${kime ? '✓' : '✗'}`);
+console.log(kb1 && kb2 && kb3 && kh && ke && ks && kk && kx1 && kx2 && kx4 && kime
+  ? '✓ 快捷键工作正常' : '✗ 快捷键异常');
 
 /* ---------------- 许可合规：AGPL 衍生作品不能漏声明 ---------------- */
 console.log('\n=== 许可合规 ===');
