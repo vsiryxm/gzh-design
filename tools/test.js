@@ -106,7 +106,7 @@ global.Blob = function(){};
 
 // eval 里的 const 不会泄漏到外层，主动挂到 global
 eval(js + `\n;Object.assign(global, {
-  THEMES, build, parse, render, pick, load, loadDemo,
+  THEMES, build, parse, render, pick, load,
   elSrc, elOut, elScreen, elPcScreen, elStage, elMain,
   setLayout, applyLayout, setMode, applyMode, setSync, fit, setUi, setMTab, isMobile,
   toggleWrap, insertLink, cutCurrentLine,
@@ -124,9 +124,7 @@ const outDir = path.join(__dirname, '..', 'out');
 fs.mkdirSync(outDir, { recursive: true });
 
 /* ---------------- 结构断言：每块只在 1 层内边距里 ----------------
-   以前 chapter() 漏闭合，导致每章把后面所有块吞进去，padding 层层累加，
-   正文越往下越窄（335 → 295 → 255 …）。静态统计开闭标签是配平的，
-   只有按 DOM 祖先链统计才看得出来，所以这里扫标签栈。            */
+   按 DOM 祖先链统计内边距深度，防止某章漏闭合导致层层叠加。 */
 function padDepthAudit(html){
   const re = /<section\b[^>]*>|<\/section>|<p\b[^>]*>/g;
   const stack = [];
@@ -234,7 +232,7 @@ try{ d = JSON.parse(localStorage.getItem('gzh-paiban-v2')); }catch(e){}
 console.log(d ? `写入 ${d.theme} / ${d.md.length} 字符 / ${d.layout} / ${d.vmode} / sync=${d.sync}` : '✗ 未写入');
 const okWrite = d && d.theme === 'zen' && d.md === md && d.layout === 'left' && d.vmode === 'pc' && d.sync === false;
 
-// 模拟重新打开：先备份盘上快照（页内 setter 会把空内容写回去，真实场景不会）
+// 模拟重新打开：先备份盘上快照
 const snap = localStorage.getItem('gzh-paiban-v2');
 elSrc.value = '';
 setCur('green');
@@ -312,7 +310,7 @@ setUi('light');
 const uLight = document.documentElement.getAttribute('data-ui') === 'light' && ui() === 'light';
 const uSaved = (JSON.parse(localStorage.getItem('gzh-paiban-v2')) || {}).ui === 'light';
 const uCss = /html\[data-ui="light"\]\s*\{/.test(html);
-// 地址栏配色要跟着界面皮肤走，浅色留深色边很难看
+// 地址栏配色跟着界面皮肤走
 const uMeta = els.themeColor && els.themeColor.getAttribute('content') === '#ffffff';
 setUi('dark');
 const uDark = document.documentElement.getAttribute('data-ui') === 'dark' && ui() === 'dark';
@@ -397,12 +395,12 @@ const root = path.join(__dirname, '..');
 const licTxt = fs.readFileSync(path.join(root, 'LICENSE'), 'utf8');
 const noticeTxt = fs.readFileSync(path.join(root, 'NOTICE'), 'utf8');
 const pkgJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-// LICENSE 只放未经改动的 AGPL 原文（便于 GitHub 识别），版权与衍生说明集中在 NOTICE
+// LICENSE 放未经改动的 AGPL 原文（便于 GitHub 识别），版权说明在 NOTICE
 const okLic = /GNU AFFERO GENERAL PUBLIC LICENSE/.test(licTxt) && /Version 3, 19 November 2007/.test(licTxt);
 const okNotice = /衍生作品/.test(noticeTxt) && /isjiamu\/gzh-design-skill/.test(noticeTxt)
               && /Jiamu/.test(noticeTxt) && /Simon Yang/.test(noticeTxt);
 const okPkg = pkgJson.license === 'AGPL-3.0-or-later';
-// §5 的「保留版权声明」也要落在源码里
+// §5 要求：版权声明也要落在源码里
 const okPage = /项目源码/.test(html) && /AGPL-3\.0-or-later/.test(html) && /Jiamu/.test(html);
 console.log(`  LICENSE ${okLic ? '✓' : '✗'} · NOTICE ${okNotice ? '✓' : '✗'} · package.json ${okPkg ? '✓' : '✗'} · 页面源码入口 ${okPage ? '✓' : '✗'}`);
 console.log(okLic && okNotice && okPkg && okPage ? '✓ AGPL 声明齐全（含上游版权与源码入口）' : '✗ 许可声明不完整');
