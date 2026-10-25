@@ -565,10 +565,16 @@ const FONT = "-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB',
 const SERIF = "'Songti SC','STSong','Noto Serif SC','Source Han Serif SC',Georgia,'Times New Roman',serif";
 const MONO = "'SF Mono',Consolas,Monaco,monospace";
 
+/* 主题里的 fs / pad 按 px 书写，导出时统一换成 rem（1rem = 16px）。 */
+const rem = px => {
+  const v = (px / 16).toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+  return (v || '0') + 'rem';
+};
+
 const THEMES = {
   green: {
     label:'摸鱼绿', dot:'#059669', chapter:'magazine',
-    fs:14, pad:'20px', list:'pill', quote:'dash', h3:'marker',
+    fs:16, pad:15, list:'pill', quote:'dash', h3:'marker',
     pillBg:'#E8F6F0', pillText:'#047857', pillDot:'#059669', quoteBorder:'#BBF7D0',
     main:'#059669', light:'#F0FDF4', lightBorder:'#BBF7D0',
     accent:'#FDE68A', accentText:'#111827',
@@ -582,7 +588,7 @@ const THEMES = {
   },
   red: {
     label:'红白色系', dot:'#DC2626', chapter:'redblock',
-    fs:15, pad:'10px', list:'pill', quote:'bar', h3:'bar',
+    fs:17, pad:8, list:'pill', quote:'bar', h3:'bar',
     pillBg:'#FEE2E2', pillText:'#991B1B', pillDot:'#DC2626', quoteBorder:'#FECACA',
     main:'#DC2626', light:'#FEF2F2', lightBorder:'#FECACA',
     accent:'#FECACA', accentText:'#7F1D1D',
@@ -596,7 +602,7 @@ const THEMES = {
   },
   graphite: {
     label:'石墨极简', dot:'#52525B', chapter:'watermark',
-    fs:15, pad:'10px', list:'pill', quote:'bar', h3:'bar',
+    fs:17, pad:8, list:'pill', quote:'bar', h3:'bar',
     pillBg:'#F4F4F5', pillText:'#27272A', pillDot:'#52525B', quoteBorder:'#E4E4E7',
     main:'#52525B', light:'#FAFAFA', lightBorder:'#E4E4E7',
     accent:'#E4E4E7', accentText:'#27272A',
@@ -610,7 +616,7 @@ const THEMES = {
   },
   zen: {
     label:'留白禅意', dot:'#4A5D52', chapter:'zen',
-    fs:15, pad:'16px', list:'line', quote:'bar', h3:'serif',
+    fs:17, pad:11, list:'line', quote:'bar', h3:'serif',
     pillBg:'#EEF3F0', pillText:'#3D5046', pillDot:'#4A5D52', quoteBorder:'#B5C8BC',
     main:'#4A5D52', light:'#F6F8F6', lightBorder:'#DDE5DF',
     accent:'#DDE5DF', accentText:'#2B3630',
@@ -624,7 +630,7 @@ const THEMES = {
   },
   ticket: {
     label:'摸鱼票据', dot:'#059669', chapter:'ticket',
-    fs:14, pad:'20px', list:'card', quote:'bar', h3:'bar',
+    fs:16, pad:15, list:'card', quote:'bar', h3:'bar',
     pillBg:'#F0FDF4', pillText:'#1a1a1a', pillDot:'#059669', quoteBorder:'#A7F3D0',
     main:'#059669', light:'#F0FDF4', lightBorder:'#A7F3D0',
     accent:'#A7F3D0', accentText:'#111111',
@@ -638,7 +644,7 @@ const THEMES = {
   },
   olive: {
     label:'橄榄手记', dot:'#ed7b2f', chapter:'journal',
-    fs:15, pad:'20px', list:'pill', quote:'bar', h3:'underline',
+    fs:17, pad:15, list:'pill', quote:'bar', h3:'underline',
     pillBg:'#EAEBE5', pillText:'#23251d', pillDot:'#ed7b2f', quoteBorder:'#E8DCCB',
     main:'#ed7b2f', light:'#FBF7F2', lightBorder:'#E8DCCB',
     accent:'#F3E3D2', accentText:'#5A3A1A',
@@ -732,7 +738,7 @@ function inline(text, th){
 
   // 行内代码
   s = s.replace(/`([^`]+)`/g, (_, c) => ph(
-    `<span style="background:#F3F4F6;color:#1F2937;padding:2px 6px;border-radius:4px;font-size:13px;font-weight:600;font-family:${MONO};">${leaf(esc(c))}</span>`));
+    `<span style="background:#F3F4F6;color:#1F2937;padding:2px 6px;border-radius:4px;font-size:15px;font-weight:600;font-family:${MONO};">${leaf(esc(c))}</span>`));
 
   // 链接只保留文字（公众号正文外链点不了）
   s = s.replace(/\[([^\]]*)\]\(([^)]+)\)/g, '$1');
@@ -795,7 +801,7 @@ function chapter(num, titleRaw, en, th, isLast){
     ? (th.chapter === 'zen' ? 'POSTSCRIPT'
       : (th.chapter === 'ticket' || th.chapter === 'magazine') ? '' : 'THE END')
     : en;
-  const base = `margin-bottom:32px;padding:0 ${th.pad};`;
+  const base = `margin-bottom:32px;padding:0 ${rem(th.pad)};`;
 
   if(th.chapter === 'magazine'){   // 摸鱼绿：大数字 + 竖线
     return `<section style="${base}margin-top:${isLast?48:40}px;">
@@ -806,7 +812,7 @@ function chapter(num, titleRaw, en, th, isLast){
     </section>
     <span style="width:1px;height:36px;background:${th.hair};flex-shrink:0;display:inline-block;overflow:hidden;font-size:0;line-height:0;">${leaf('&nbsp;')}</span>
     <section>
-      <p style="margin:0 0 1px;font-size:17px;font-weight:900;color:${th.title};letter-spacing:0.3px;">${leaf(esc(title))}</p>
+      <p style="margin:0 0 1px;font-size:19px;font-weight:900;color:${th.title};letter-spacing:0.3px;">${leaf(esc(title))}</p>
       ${tag ? `<p style="margin:0;font-size:11px;font-weight:600;color:${th.sub};letter-spacing:1.5px;">${leaf(esc(tag))}</p>` : ''}
     </section>
   </section>
@@ -817,10 +823,10 @@ function chapter(num, titleRaw, en, th, isLast){
   if(th.chapter === 'redblock'){  // 红白：红底编号 + 底部红线
     return `<section style="${base}margin-top:${isLast?48:40}px;">
   <section style="display:flex;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:3px solid ${th.main};">
-    <span style="display:inline-block;background:${th.main};color:#FFFFFF;font-size:18px;font-weight:900;padding:4px 14px;border-radius:6px;margin-right:14px;line-height:1.3;">${leaf(n)}</span>
+    <span style="display:inline-block;background:${th.main};color:#FFFFFF;font-size:20px;font-weight:900;padding:4px 14px;border-radius:6px;margin-right:14px;line-height:1.3;">${leaf(n)}</span>
     <section>
       ${tag ? `<p style="font-size:10px;color:${th.main};font-weight:700;letter-spacing:3px;margin:0 0 2px;text-transform:uppercase;">${leaf(esc(tag))}</p>` : ''}
-      <h3 style="font-size:18px;font-weight:800;color:${th.title};margin:0;letter-spacing:0.5px;">${leaf(esc(title))}</h3>
+      <h3 style="font-size:20px;font-weight:800;color:${th.title};margin:0;letter-spacing:0.5px;">${leaf(esc(title))}</h3>
     </section>
   </section>
 </section>
@@ -833,7 +839,7 @@ function chapter(num, titleRaw, en, th, isLast){
     <p style="font-size:48px;font-weight:900;color:${th.hair};margin:0;line-height:1;letter-spacing:-2px;">${leaf(n)}</p>
     <section style="margin-top:-8px;">
       ${tag ? `<p style="font-size:10px;color:${th.sub};font-weight:500;letter-spacing:3px;margin:0 0 6px;text-transform:uppercase;">${leaf(esc(tag))}</p>` : ''}
-      <h3 style="font-size:20px;font-weight:800;color:${th.title};margin:0;letter-spacing:0.5px;line-height:1.4;">${leaf(esc(title))}</h3>
+      <h3 style="font-size:22px;font-weight:800;color:${th.title};margin:0;letter-spacing:0.5px;line-height:1.4;">${leaf(esc(title))}</h3>
     </section>
   </section>
 </section>
@@ -843,7 +849,7 @@ function chapter(num, titleRaw, en, th, isLast){
   if(th.chapter === 'zen'){       // 禅意：英文 + 衬线 + 短线
     return `<section style="${base}margin-top:${isLast?64:56}px;">
   <p style="font-size:10px;color:${th.main};font-weight:600;letter-spacing:4px;margin:0 0 10px;text-transform:uppercase;">${leaf(tag ? n + ' · ' + esc(tag) : n)}</p>
-  <h3 style="font-family:${SERIF};font-size:22px;font-weight:700;color:${th.title};margin:0 0 16px;letter-spacing:0.5px;line-height:1.4;">${leaf(esc(title))}</h3>
+  <h3 style="font-family:${SERIF};font-size:24px;font-weight:700;color:${th.title};margin:0 0 16px;letter-spacing:0.5px;line-height:1.4;">${leaf(esc(title))}</h3>
   <section style="width:40px;height:2px;background:${th.main};margin-bottom:20px;">${leaf('<br>')}</section>
 </section>
 `;
@@ -854,7 +860,7 @@ function chapter(num, titleRaw, en, th, isLast){
   <section style="display:flex;align-items:center;gap:12px;margin-bottom:22px;padding-bottom:12px;border-bottom:2px solid ${th.hair};">
     <section style="background:${th.main};color:#fff;font-size:12px;font-weight:800;padding:6px 12px;letter-spacing:2px;flex-shrink:0;">${leaf(n)}</section>
     <section style="flex:1;min-width:0;">
-      <p style="margin:0;font-size:18px;font-weight:800;color:${th.title};letter-spacing:1px;line-height:1.45;">${leaf(esc(title))}</p>
+      <p style="margin:0;font-size:20px;font-weight:800;color:${th.title};letter-spacing:1px;line-height:1.45;">${leaf(esc(title))}</p>
       ${tag ? `<p style="margin:3px 0 0;font-size:11px;color:${th.sub};letter-spacing:1px;">${leaf('/ ' + esc(tag))}</p>` : ''}
     </section>
   </section>
@@ -871,7 +877,7 @@ function chapter(num, titleRaw, en, th, isLast){
     </section>
     <span style="width:1px;height:36px;background:${th.hair};flex-shrink:0;display:inline-block;overflow:hidden;font-size:0;line-height:0;">${leaf('&nbsp;')}</span>
     <section>
-      <p style="margin:0 0 1px;font-size:17px;font-weight:800;color:${th.title};letter-spacing:0.2px;">${leaf(esc(title))}</p>
+      <p style="margin:0 0 1px;font-size:19px;font-weight:800;color:${th.title};letter-spacing:0.2px;">${leaf(esc(title))}</p>
       ${tag ? `<p style="margin:0;font-size:11px;font-weight:600;color:${th.sub};letter-spacing:1.2px;">${leaf(esc(tag))}</p>` : ''}
     </section>
   </section>
@@ -887,25 +893,25 @@ function chapter(num, titleRaw, en, th, isLast){
 function subTitle(text, th){
   const t = leaf(esc(text));
   if(th.h3 === 'marker'){          // 摸鱼绿：黄色荧光底
-    return `<section style="margin-bottom:18px;padding:0 ${th.pad};">
-  <p style="font-size:15px;font-weight:900;color:#111827;margin:0;line-height:1.7;"><span style="background:${th.accent};padding:0 4px;">${t}</span></p>
+    return `<section style="margin-bottom:18px;padding:0 ${rem(th.pad)};">
+  <p style="font-size:17px;font-weight:900;color:#111827;margin:0;line-height:1.7;"><span style="background:${th.accent};padding:0 4px;">${t}</span></p>
 </section>`;
   }
   if(th.h3 === 'underline'){       // 橄榄：粗下划线，只覆盖文字宽度
-    return `<section style="margin-bottom:18px;padding:0 ${th.pad};">
-  <p style="margin:0;"><span style="display:inline-block;font-size:16px;font-weight:700;color:${th.title};border-bottom:3px solid ${th.main};padding-bottom:2px;">${t}</span></p>
+    return `<section style="margin-bottom:18px;padding:0 ${rem(th.pad)};">
+  <p style="margin:0;"><span style="display:inline-block;font-size:18px;font-weight:700;color:${th.title};border-bottom:3px solid ${th.main};padding-bottom:2px;">${t}</span></p>
 </section>`;
   }
   if(th.h3 === 'serif'){           // 禅意：衬线 + 短线
-    return `<section style="margin-bottom:20px;padding:0 ${th.pad};">
-  <p style="margin:0 0 8px;font-family:${SERIF};font-size:17px;font-weight:700;color:${th.title};letter-spacing:0.3px;">${t}</p>
+    return `<section style="margin-bottom:20px;padding:0 ${rem(th.pad)};">
+  <p style="margin:0 0 8px;font-family:${SERIF};font-size:19px;font-weight:700;color:${th.title};letter-spacing:0.3px;">${t}</p>
   <section style="width:24px;height:1px;background:${th.quoteBorder};">${leaf('<br>')}</section>
 </section>`;
   }
-  return `<section style="margin-bottom:16px;padding:0 ${th.pad};">
+  return `<section style="margin-bottom:16px;padding:0 ${rem(th.pad)};">
   <section style="display:flex;align-items:center;gap:8px;">
     <section style="width:4px;height:15px;background:${th.main};flex-shrink:0;">${leaf('<br>')}</section>
-    <p style="font-size:15px;font-weight:700;color:${th.title};margin:0;">${t}</p>
+    <p style="font-size:17px;font-weight:700;color:${th.title};margin:0;">${t}</p>
   </section>
 </section>`;
 }
@@ -922,7 +928,7 @@ function splitLi(t){
 /* 列表：三种结构 —— 胶囊标签 / 票据卡片 / 细线行 */
 function renderList(b, th){
   const items = b.items.map(splitLi);
-  const wrap = inner => `<section style="padding:0 ${th.pad};margin-bottom:16px;">${inner}</section>`;
+  const wrap = inner => `<section style="padding:0 ${rem(th.pad)};margin-bottom:16px;">${inner}</section>`;
 
   if(th.list === 'card'){          // 票据：定高绿方块 + 米黄卡片 + 撕票虚线
     // 绿方块固定 36×36：外层 flex-start 防 stretch，内层 line-height 垂直居中
@@ -930,7 +936,7 @@ function renderList(b, th){
   <section style="background:${th.paper};border:1px solid #eee;margin-bottom:12px;">
     <section style="display:flex;align-items:flex-start;">
       <section style="width:36px;height:36px;line-height:36px;background:${th.main};color:#fff;font-size:12px;font-weight:800;text-align:center;flex-shrink:0;">${leaf(b.ordered ? String(k+1) : '·')}</section>
-      <section style="flex:1;padding:12px 16px;font-size:13px;color:#555;line-height:1.7;border-left:1px dashed ${th.quoteBorder};">
+      <section style="flex:1;padding:12px 16px;font-size:15px;color:#555;line-height:1.7;border-left:1px dashed ${th.quoteBorder};">
         ${it.label ? `<span style="font-weight:600;color:#1a1a1a;">${leaf(esc(it.label))}</span><span leaf="">：</span>` : ''}${it.desc ? inline(it.desc, th) : ''}
       </section>
     </section>
@@ -942,7 +948,7 @@ function renderList(b, th){
     const rows = items.map((it, k) => `
   <section style="display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid ${th.hair};">
     <p style="font-size:11px;color:${th.main};font-weight:600;letter-spacing:1px;margin:0;min-width:26px;">${leaf(b.ordered ? String(k+1).padStart(2,'0') : '·')}</p>
-    <p style="font-size:14px;color:${th.title};margin:0;line-height:1.75;padding-left:12px;flex:1;">${inline(it.label ? '**' + it.label + '**：' + it.desc : it.desc, th)}</p>
+    <p style="font-size:16px;color:${th.title};margin:0;line-height:1.75;padding-left:12px;flex:1;">${inline(it.label ? '**' + it.label + '**：' + it.desc : it.desc, th)}</p>
   </section>`).join('');
     return wrap(`<section style="border-top:1px solid ${th.hair};">${rows}</section>`);
   }
@@ -952,7 +958,7 @@ function renderList(b, th){
     const rows = items.map((it, k) => `
   <section style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">
     <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:${th.main};color:#fff;font-size:12px;font-weight:700;border-radius:50%;flex-shrink:0;margin-top:2px;">${leaf(String(k+1))}</span>
-    <p style="font-size:${th.fs}px;color:${th.body};margin:0;line-height:1.8;flex:1;text-align:justify;">${inline(it.label ? '**' + it.label + '**：' + it.desc : it.desc, th)}</p>
+    <p style="font-size:${rem(th.fs)};color:${th.body};margin:0;line-height:1.8;flex:1;text-align:justify;">${inline(it.label ? '**' + it.label + '**：' + it.desc : it.desc, th)}</p>
   </section>`).join('');
     return wrap(rows);
   }
@@ -961,14 +967,14 @@ function renderList(b, th){
   const rows = items.map(it => {
     if(!it.label) return `
   <section style="margin-bottom:12px;">
-    <p style="font-size:${th.fs}px;color:${th.body};margin:0;line-height:1.8;text-align:justify;">${inline(it.desc, th)}</p>
+    <p style="font-size:${rem(th.fs)};color:${th.body};margin:0;line-height:1.8;text-align:justify;">${inline(it.desc, th)}</p>
   </section>`;
     return `
   <section style="margin-bottom:14px;">
     <p style="margin:0 0 6px;">
-      <span style="display:inline-block;font-size:13px;font-weight:700;color:${th.pillText};background:${th.pillBg};padding:3px 10px;border-radius:999px;"><span style="display:inline-block;width:6px;height:6px;background:${th.pillDot};border-radius:50%;margin-right:5px;vertical-align:middle;">${leaf('<br>')}</span>${leaf(esc(it.label))}</span>
+      <span style="display:inline-block;font-size:15px;font-weight:700;color:${th.pillText};background:${th.pillBg};padding:3px 10px;border-radius:999px;"><span style="display:inline-block;width:6px;height:6px;background:${th.pillDot};border-radius:50%;margin-right:5px;vertical-align:middle;">${leaf('<br>')}</span>${leaf(esc(it.label))}</span>
     </p>
-    ${it.desc ? `<p style="font-size:13px;color:${th.body};margin:0;line-height:1.7;text-align:justify;">${inline(it.desc, th)}</p>` : ''}
+    ${it.desc ? `<p style="font-size:15px;color:${th.body};margin:0;line-height:1.7;text-align:justify;">${inline(it.desc, th)}</p>` : ''}
   </section>`;
   }).join('');
   return wrap(rows);
@@ -993,18 +999,18 @@ function renderBlocks(blocks, th){
         break;
 
       case 'p':
-        html += `<section style="padding:0 ${th.pad};">
-  <p style="font-size:${th.fs}px;color:${th.body};line-height:1.9;margin-bottom:16px;text-align:justify;">${inline(b.text, th)}</p>
+        html += `<section style="padding:0 ${rem(th.pad)};">
+  <p style="font-size:${rem(th.fs)};color:${th.body};line-height:1.9;margin-bottom:16px;text-align:justify;">${inline(b.text, th)}</p>
 </section>`;
         break;
 
       case 'quote': {
-        const q = `<p style="font-size:${th.fs}px;color:${th.title};font-weight:600;line-height:1.8;margin:0;">${inline(b.text, th)}</p>`;
+        const q = `<p style="font-size:${rem(th.fs)};color:${th.title};font-weight:600;line-height:1.8;margin:0;">${inline(b.text, th)}</p>`;
         html += th.quote === 'dash'
-          ? `<section style="padding:0 ${th.pad};margin-bottom:20px;">
+          ? `<section style="padding:0 ${rem(th.pad)};margin-bottom:20px;">
   <section style="background:${th.quoteBg};border:1px dashed ${th.quoteBorder};border-radius:8px;padding:14px 16px;">${q}</section>
 </section>`
-          : `<section style="padding:0 ${th.pad};margin-bottom:20px;">
+          : `<section style="padding:0 ${rem(th.pad)};margin-bottom:20px;">
   <section style="background:${th.quoteBg};border-left:4px solid ${th.main};padding:14px 16px;">${q}</section>
 </section>`;
         break;
@@ -1016,7 +1022,7 @@ function renderBlocks(blocks, th){
 
       case 'code':
         // 每行一个 <p style="margin:0">，绝不用 white-space:pre
-        html += `<section style="padding:0 ${th.pad};margin-bottom:16px;">
+        html += `<section style="padding:0 ${rem(th.pad)};margin-bottom:16px;">
   <section style="border-radius:8px;overflow:hidden;background:#1E293B;">
     <section style="padding:8px 14px;background:#0F172A;">
       <span style="font-size:11px;color:#64748B;font-family:${MONO};letter-spacing:1px;">${leaf(esc(b.lang || 'shell'))}</span>
@@ -1029,7 +1035,7 @@ function renderBlocks(blocks, th){
         break;
 
       case 'img':
-        html += `<section style="padding:0 ${th.pad};margin-bottom:16px;">
+        html += `<section style="padding:0 ${rem(th.pad)};margin-bottom:16px;">
   <section style="background:${th.paper};border:1px solid ${th.hair};padding:6px;">
     <figure style="margin:0;">${leaf(`<img src="${esc(b.src)}" style="max-width:100%;height:auto;display:block;margin:0 auto;">`)}</figure>
   </section>${b.alt ? `
@@ -1038,7 +1044,7 @@ function renderBlocks(blocks, th){
         break;
 
       case 'hr':
-        html += `<section style="padding:0 ${th.pad};margin-bottom:24px;">
+        html += `<section style="padding:0 ${rem(th.pad)};margin-bottom:24px;">
   <section style="height:1px;background:${th.divider};">${leaf('<br>')}</section>
 </section>`;
         break;
@@ -1066,9 +1072,9 @@ function endingIcons(th){
 function ending(th){
   const line = '都看到这里了，请随手点赞、转发、关注一下吧！';
   if(th.chapter === 'ticket'){    // 票据：黑描边硬阴影，呼应封面
-    return `<section style="padding:0 ${th.pad};margin-top:8px;">
+    return `<section style="padding:0 ${rem(th.pad)};margin-top:8px;">
   <section style="background:${th.paper};border:2px solid #1a1a1a;box-shadow:3px 3px 0 #1a1a1a;padding:22px 18px;text-align:center;">
-    <p style="font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.8;margin:0;">${leaf(line)}</p>
+    <p style="font-size:16px;font-weight:700;color:#1a1a1a;line-height:1.8;margin:0;">${leaf(line)}</p>
     ${endingIcons(th)}
     <section style="border-top:1px dashed ${th.quoteBorder};padding-top:12px;margin-top:16px;">
       <p style="font-size:10px;color:#888;letter-spacing:3px;margin:0;">${leaf('THANKS FOR READING')}</p>
@@ -1076,9 +1082,9 @@ function ending(th){
   </section>
 </section>`;
   }
-  return `<section style="padding:0 ${th.pad};margin-top:8px;">
+  return `<section style="padding:0 ${rem(th.pad)};margin-top:8px;">
   <section style="height:2px;background:${th.main};opacity:0.25;margin-bottom:20px;">${leaf('<br>')}</section>
-  <p style="font-size:13px;color:${th.sub};text-align:center;line-height:1.9;margin:0;">${leaf(line)}</p>
+  <p style="font-size:15px;color:${th.sub};text-align:center;line-height:1.9;margin:0;">${leaf(line)}</p>
   ${endingIcons(th)}
   <p style="font-size:10px;color:${th.sub};text-align:center;letter-spacing:2px;margin:14px 0 0;">${leaf('THANKS FOR READING')}</p>
 </section>`;
