@@ -1447,7 +1447,7 @@ function showHelp(){
     title: '公众号文章排版器',
     body: `<p style="margin:0 0 8px;">单文件、纯前端，不联网也不上传，文章只留在你自己的浏览器里。</p>
     <p style="margin:0 0 4px;color:var(--text);font-weight:600;">编辑快捷键</p>
-    <p style="margin:0 0 10px;">Ctrl/⌘ + B 粗体 · I 高亮 · E 行内代码 · Shift + S 删除线 · K 链接；不选中文字时按 X 剪切整行。</p>
+    <p style="margin:0 0 10px;">Ctrl/⌘ + B 粗体 · I 高亮 · E 行内代码 · Shift + S 删除线 · K 链接；不选中文字时按 X 剪切整行，Z 撤销、Shift + Z 重做。</p>
     <p style="margin:0 0 4px;color:var(--text);font-weight:600;">致谢原作者</p>
 <p style="margin:0 0 6px;">六套主题的排版规则、组件结构（章节标题、胶囊列表、票据卡、代码块、结尾卡）都来自这个开源技能，这个编辑器只是把它的规则做成了不用跑 AI 的粘贴即排版工具：</p>
 <p style="margin:0 0 10px;"><a href="${CREDIT_URL}" target="_blank" rel="noopener noreferrer">${CREDIT_URL.replace('https://', '')}</a></p>
@@ -1600,8 +1600,29 @@ elSrc.addEventListener('input', () => {
 
 /* ---------- 编辑器快捷键 ----------
    Ctrl/⌘+B 粗体 · I 高亮 · E 行内代码 · Shift+S 删除线 · K 链接
-   没选中文字时 Ctrl/⌘+X 剪切整行
+   没选中文字时 Ctrl/⌘+X 剪切整行，Ctrl/⌘+Z 撤销，Shift+Z 重做
    只挂在编辑框上；输入法组字期间让路，否则打拼音会被抢。 */
+
+/* 改文本走 execCommand('insertText' / 'delete')：这类改动会落进浏览器的撤销栈，
+   Ctrl+Z 才能连快捷键插的标记一起撤销（setRangeText 不会，只能当兜底）。 */
+function editText(text, s, e){
+  const el = elSrc;
+  el.focus();
+  el.setSelectionRange(s, e);
+  if(text === '' && s !== e){
+    let del = false;
+    try{ del = document.execCommand('delete'); }catch(err){}
+    if(del){ el.setSelectionRange(s, s); return true; }
+  }
+  let ok = false;
+  try{ ok = document.execCommand('insertText', false, text); }catch(err){ ok = false; }
+  if(!ok){
+    el.setRangeText(text, s, e, 'end');
+    el.setSelectionRange(s + text.length, s + text.length);
+  }
+  return ok;
+}
+
 function toggleWrap(before, after){
   const el = elSrc, v = el.value;
   const s0 = el.selectionStart, e0 = el.selectionEnd;
@@ -1609,7 +1630,7 @@ function toggleWrap(before, after){
   if(sel.length >= before.length + after.length && sel.startsWith(before) && sel.endsWith(after)){
     // 选中的内容本身就带着标记 → 把标记去掉
     const inner = sel.slice(before.length, sel.length - after.length);
-    el.setRangeText(inner, s0, e0, 'end');
+    editText(inner, s0, e0);
     el.setSelectionRange(s0, s0 + inner.length);
   } else {
     const outB = s0 >= before.length && v.slice(s0 - before.length, s0) === before;
@@ -1617,19 +1638,18 @@ function toggleWrap(before, after){
     if(outB && outA){
       // 光标在标记中间 → 连外层标记一起清掉
       if(sel.length){
-        el.setRangeText(sel, s0 - before.length, e0 + after.length, 'end');
+        editText(sel, s0 - before.length, e0 + after.length);
         el.setSelectionRange(s0 - before.length, s0 - before.length + sel.length);
       } else {
-        el.setRangeText('', s0 - before.length, e0 + after.length, 'end');
+        editText('', s0 - before.length, e0 + after.length);
         el.setSelectionRange(s0 - before.length, s0 - before.length);
       }
     } else {
-      el.setRangeText(before + sel + after, s0, e0, 'end');
+      editText(before + sel + after, s0, e0);
       if(sel.length) el.setSelectionRange(s0 + before.length, s0 + before.length + sel.length);
       else el.setSelectionRange(s0 + before.length, s0 + before.length);
     }
   }
-  el.focus();
   render();          // render() 内部会顺手 save()
 }
 
@@ -1638,13 +1658,12 @@ function insertLink(){
   const s0 = el.selectionStart, e0 = el.selectionEnd;
   const sel = v.slice(s0, e0);
   if(sel.length){
-    el.setRangeText('[' + sel + '](url)', s0, e0, 'end');
+    editText('[' + sel + '](url)', s0, e0);
     el.setSelectionRange(s0 + sel.length + 3, s0 + sel.length + 6);   // 选中 url，直接粘贴
   } else {
-    el.setRangeText('[链接文字](url)', s0, e0, 'end');
+    editText('[链接文字](url)', s0, e0);
     el.setSelectionRange(s0 + 7, s0 + 10);
   }
-  el.focus();
   render();
 }
 
@@ -1666,7 +1685,7 @@ function cutCurrentLine(){
       if(cl && cl.writeText) cl.writeText(text);
       else document.execCommand('copy');
     }catch(e){}
-    el.setRangeText('', ls, le, 'end');
+    try{ document.execCommand('delete'); }catch(e){ el.setRangeText('', ls, le, 'end'); }
   }
   render();
 }
@@ -1677,6 +1696,13 @@ elSrc.addEventListener('keydown', e => {
   const k = (e.key || '').toLowerCase();
   if(k === 'x' && elSrc.selectionStart === elSrc.selectionEnd){
     e.preventDefault(); cutCurrentLine(); return;
+  }
+  if(k === 'z'){
+    // 撤销 / 重做：走浏览器自己的编辑栈，手打的字和快捷键插的标记能一起撤
+    e.preventDefault();
+    try{ document.execCommand(e.shiftKey ? 'redo' : 'undo'); }catch(err){}
+    render();
+    return;
   }
   if(e.shiftKey){
     if(k === 's'){ e.preventDefault(); toggleWrap('~~','~~'); }

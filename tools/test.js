@@ -75,10 +75,14 @@ global.document = {
   querySelectorAll: () => [],
   querySelector: () => mkEl(''),
   createRange: () => ({ selectNodeContents(){} }),
-  execCommand(cmd){
-    // 模拟真实行为：cut 会把选中的内容真删掉（其余命令这里只关心返回值）
+  execCommand(cmd, showUI, value){
+    // 模拟真实行为：insertText 替换选区、delete/cut 删掉选区；并记下最后一条命令
     const el = global.__active;
-    if(cmd === 'cut' && el && el.selectionStart !== el.selectionEnd){
+    global.__cmd = cmd;
+    if(!el) return true;
+    if(cmd === 'insertText'){
+      el.setRangeText(String(value), el.selectionStart, el.selectionEnd, 'end');
+    }else if((cmd === 'delete' || cmd === 'cut') && el.selectionStart !== el.selectionEnd){
       el.setRangeText('', el.selectionStart, el.selectionEnd, 'end');
     }
     return true;
@@ -385,8 +389,17 @@ setText('abc', 0, 3);
 press('b', { ctrlKey: true, isComposing: true });    // 输入法组字中让路
 const kime = elSrc.value === 'abc';
 
-console.log(`  粗体 ${kb1 ? '✓' : '✗'} · 去标记 ${kb2 ? '✓' : '✗'} · ⌘键与空选区 ${kb3 ? '✓' : '✗'} · 高亮 ${kh ? '✓' : '✗'} · 行内代码 ${ke ? '✓' : '✗'} · 删除线 ${ks ? '✓' : '✗'} · 链接 ${kk ? '✓' : '✗'} · 剪切整行 ${kx1 && kx2 ? '✓' : '✗'} · 有选区不抢 ${kx4 ? '✓' : '✗'} · 输入法让路 ${kime ? '✓' : '✗'}`);
-console.log(kb1 && kb2 && kb3 && kh && ke && ks && kk && kx1 && kx2 && kx4 && kime
+// 撤销 / 重做：走浏览器原生编辑栈
+setText('hello world', 0, 5);
+press('b', { ctrlKey: true });
+const kz0 = global.__cmd === 'insertText';            // 快捷键的改动必须落在撤销栈里
+const kz1 = press('z', { ctrlKey: true });
+const kz1ok = kz1.defaultPrevented && global.__cmd === 'undo';
+const kz2 = press('z', { ctrlKey: true, shiftKey: true });
+const kz2ok = kz2.defaultPrevented && global.__cmd === 'redo';
+
+console.log(`  粗体 ${kb1 ? '✓' : '✗'} · 去标记 ${kb2 ? '✓' : '✗'} · ⌘键与空选区 ${kb3 ? '✓' : '✗'} · 高亮 ${kh ? '✓' : '✗'} · 行内代码 ${ke ? '✓' : '✗'} · 删除线 ${ks ? '✓' : '✗'} · 链接 ${kk ? '✓' : '✗'} · 剪切整行 ${kx1 && kx2 ? '✓' : '✗'} · 有选区不抢 ${kx4 ? '✓' : '✗'} · 输入法让路 ${kime ? '✓' : '✗'} · 撤销重做 ${kz0 && kz1ok && kz2ok ? '✓' : '✗'}`);
+console.log(kb1 && kb2 && kb3 && kh && ke && ks && kk && kx1 && kx2 && kx4 && kime && kz0 && kz1ok && kz2ok
   ? '✓ 快捷键工作正常' : '✗ 快捷键异常');
 
 /* ---------------- 许可合规：AGPL 衍生作品不能漏声明 ---------------- */
