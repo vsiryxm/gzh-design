@@ -300,11 +300,20 @@
     word-break:break-word; overflow-y:auto; min-height:0;
   }
   .modal-body a{
-    color:var(--main2); text-decoration:none; word-break:break-all;
+    color:var(--main2); text-decoration:none; word-break:break-all; white-space:nowrap;
     border-bottom:1px solid rgba(52,211,153,.35);
   }
   .modal-body a:hover{border-bottom-color:var(--main2)}
   .modal-body b{color:var(--text)}
+  .modal-body .sec{margin:0 0 6px; color:var(--text); font-weight:600}
+  .modal-body .kb{list-style:none; margin:0 0 12px; padding:0; display:grid; grid-template-columns:max-content 1fr; gap:3px 12px; align-items:baseline}
+  .modal-body .kb li{display:contents}
+  .modal-body .kb kbd{
+    text-align:center; white-space:nowrap;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px;
+    color:var(--text); background:var(--panel2); border:1px solid var(--line);
+    border-radius:5px; padding:1px 6px;
+  }
   .modal-body .wxid{
     display:inline-flex; align-items:center; gap:8px; margin-top:10px;
     background:var(--bg); border:1px dashed var(--line); border-radius:8px;
@@ -1445,16 +1454,24 @@ const LICENSE_URL = SRC_URL + '/blob/main/LICENSE';
 function showHelp(){
   modal({
     title: '公众号文章排版器',
-    body: `<p style="margin:0 0 8px;">单文件、纯前端，不联网也不上传，文章只留在你自己的浏览器里。</p>
-    <p style="margin:0 0 4px;color:var(--text);font-weight:600;">编辑快捷键</p>
-    <p style="margin:0 0 10px;">Ctrl/⌘ + B 粗体 · I 高亮 · E 行内代码 · Shift + S 删除线 · K 链接；不选中文字时按 X 剪切整行，Z 撤销、Shift + Z 重做。</p>
-    <p style="margin:0 0 4px;color:var(--text);font-weight:600;">致谢原作者</p>
-<p style="margin:0 0 6px;">六套主题的排版规则、组件结构（章节标题、胶囊列表、票据卡、代码块、结尾卡）都来自这个开源技能，这个编辑器只是把它的规则做成了不用跑 AI 的粘贴即排版工具：</p>
-<p style="margin:0 0 10px;"><a href="${CREDIT_URL}" target="_blank" rel="noopener noreferrer">${CREDIT_URL.replace('https://', '')}</a></p>
-<p style="margin:0 0 4px;color:var(--text);font-weight:600;">源码与许可</p>
-<p style="margin:0 0 10px;">本项目是上游的衍生作品，以 <b>AGPL-3.0-or-later</b> 发布：<a href="${SRC_URL}" target="_blank" rel="noopener noreferrer">项目源码</a> · <a href="${LICENSE_URL}" target="_blank" rel="noopener noreferrer">许可证全文</a></p>
-<p style="margin:0;">用着有问题、想要新主题，或者想聊排版，加我微信：</p>
-<span class="wxid">${WX_ID}<button style="margin-left:4px;padding:3px 9px;font-size:11px;font-weight:600;background:none;border:1px solid var(--line);border-radius:6px;color:var(--dim);cursor:pointer;font-family:inherit;" onclick="copyWx(this)">复制</button></span>`,
+    body: `<p style="margin:0 0 10px;">单文件、纯前端，不联网也不上传，文章只留在你自己的浏览器里。</p>
+    <p class="sec">编辑快捷键</p>
+    <ul class="kb">
+      <li><kbd>Ctrl/⌘ + B</kbd><span>粗体</span></li>
+      <li><kbd>Ctrl/⌘ + I</kbd><span>高亮</span></li>
+      <li><kbd>Ctrl/⌘ + E</kbd><span>行内代码</span></li>
+      <li><kbd>Ctrl/⌘ + Shift + S</kbd><span>删除线</span></li>
+      <li><kbd>Ctrl/⌘ + K</kbd><span>链接</span></li>
+      <li><kbd>Ctrl/⌘ + X</kbd><span>剪切整行（未选中文字时）</span></li>
+      <li><kbd>Ctrl/⌘ + Z</kbd><span>撤销</span></li>
+      <li><kbd>Ctrl/⌘ + Shift + Z</kbd><span>重做</span></li>
+    </ul>
+    <p class="sec">致谢</p>
+    <p style="margin:0 0 10px;">六套主题的排版规则与组件结构来自 <a href="${CREDIT_URL}" target="_blank" rel="noopener noreferrer">gzh-design-skill</a>，本工具把它的规则做成了不用跑 AI 的粘贴即排版。</p>
+    <p class="sec">许可</p>
+    <p style="margin:0 0 4px;">本项目是上游的衍生作品，以 <b>AGPL-3.0-or-later</b> 发布：<a href="${SRC_URL}" target="_blank" rel="noopener noreferrer">源码</a> · <a href="${LICENSE_URL}" target="_blank" rel="noopener noreferrer">许可证全文</a></p>
+    <p style="margin:12px 0 0;">用着有问题、想要新主题，或者想聊排版，加我微信：</p>
+    <span class="wxid">${WX_ID}<button style="margin-left:4px;padding:3px 9px;font-size:11px;font-weight:600;background:none;border:1px solid var(--line);border-radius:6px;color:var(--dim);cursor:pointer;font-family:inherit;" onclick="copyWx(this)">复制</button></span>`,
     actions: [{ text:'关闭', kind:'primary', value:true }]
   });
 }
